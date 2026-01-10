@@ -56,7 +56,7 @@ class Updater(QObject):
         
         # SimpleKaruzi 仓库地址
         self.remote_manifest_url = "https://nightly.link/laobamac/SimpleKaruzi/workflows/generate-manifest/main/manifest.json.zip"
-        self.download_repo_url = "https://github.com/laobamac/SimpleKaruzi/archive/refs/heads/main.zip"
+        self.download_repo_url = "https://gitapi.simplehac.top/https://github.com/laobamac/SimpleKaruzi/archive/refs/heads/main.zip"
         
         self.temporary_dir = tempfile.mkdtemp()
         self.root_dir = os.path.dirname(os.path.realpath(__file__))

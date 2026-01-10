@@ -12,12 +12,12 @@ class DSDT:
         self.github = github_instance if github_instance else github.Github()
         self.fetcher = resource_fetcher_instance if resource_fetcher_instance else resource_fetcher.ResourceFetcher()
         self.r = run_instance if run_instance else run.Run()
-        self.iasl_url_macOS = "https://raw.githubusercontent.com/acidanthera/MaciASL/master/Dist/iasl-stable"
-        self.iasl_url_macOS_legacy = "https://raw.githubusercontent.com/acidanthera/MaciASL/master/Dist/iasl-legacy"
-        self.iasl_url_linux = "https://raw.githubusercontent.com/corpnewt/linux_iasl/main/iasl.zip"
-        self.iasl_url_linux_legacy = "https://raw.githubusercontent.com/corpnewt/iasl-legacy/main/iasl-legacy-linux.zip"
-        self.acpi_binary_tools = "https://github.com/acpica/acpica/releases"
-        self.iasl_url_windows_legacy = "https://raw.githubusercontent.com/corpnewt/iasl-legacy/main/iasl-legacy-windows.zip"
+        self.iasl_url_macOS = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/acidanthera/MaciASL/master/Dist/iasl-stable"
+        self.iasl_url_macOS_legacy = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/acidanthera/MaciASL/master/Dist/iasl-legacy"
+        self.iasl_url_linux = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/corpnewt/linux_iasl/main/iasl.zip"
+        self.iasl_url_linux_legacy = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/corpnewt/iasl-legacy/main/iasl-legacy-linux.zip"
+        self.acpi_binary_tools = "https://gitapi.simplehac.top/https://github.com/acpica/acpica/releases"
+        self.iasl_url_windows_legacy = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/corpnewt/iasl-legacy/main/iasl-legacy-windows.zip"
         self.h = {} # {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         self.iasl = self.check_iasl()
         #self.iasl_legacy = self.check_iasl(legacy=True)

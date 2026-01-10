@@ -7,6 +7,8 @@ from Scripts import utils
 import os
 import shutil
 import random
+import platform
+import sys
 from qfluentwidgets import isDarkTheme
 
 try:
@@ -29,7 +31,18 @@ class KextMaestro:
             "idVendor", 
             "HDAConfigDefault"
         ]
-        self.ock_files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "OCK_Files")
+        if getattr(sys, 'frozen', False):
+            app_name = "SimpleKaruzi"
+            if platform.system() == "Windows":
+                base_dir = os.environ.get("APPDATA", os.path.expanduser("~"))
+            elif platform.system() == "Darwin":
+                base_dir = os.path.expanduser("~/Library/Application Support")
+            else:
+                base_dir = os.path.expanduser("~/.config")
+            
+            self.ock_files_dir = os.path.join(base_dir, app_name, "OCK_Files")
+        else:
+            self.ock_files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "OCK_Files")
         self.kexts = kext_data.kexts
     
     def _get_highlight_color(self):

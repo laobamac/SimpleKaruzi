@@ -1,8 +1,7 @@
 import re
 import functools
-import threading
-from PyQt6.QtCore import Qt, QObject, QThread, QMetaObject, QCoreApplication, pyqtSlot, pyqtSignal, QEvent
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QRadioButton, QButtonGroup, QVBoxLayout, QCheckBox, QScrollArea, QLabel, QApplication
+from PyQt6.QtCore import Qt, QObject, QThread, QMetaObject, QCoreApplication, pyqtSlot, pyqtSignal
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QRadioButton, QButtonGroup, QVBoxLayout, QCheckBox, QScrollArea, QLabel
 from qfluentwidgets import MessageBoxBase, SubtitleLabel, BodyLabel, LineEdit, PushButton, ProgressBar
 
 from Scripts.datasets import os_data
@@ -13,29 +12,10 @@ def set_default_gui_handler(handler):
     global _default_gui_handler
     _default_gui_handler = handler
 
-class MainThreadRunner(QObject):
-    """用于在主线程执行函数的辅助类"""
-    run_signal = pyqtSignal(object, object, object)
-    
-    def __init__(self):
-        super().__init__()
-        self.moveToThread(QApplication.instance().thread())
-        self.run_signal.connect(self._on_run)
-        
-    @pyqtSlot(object, object, object)
-    def _on_run(self, func, args, kwargs):
-        try:
-            result = func(*args, **kwargs)
-            # 这里我们无法直接返回结果给调用者，因为这是异步信号
-            # 但对于 ensure_main_thread 的 BlockingQueuedConnection 需求，
-            # 我们需要一种同步机制。
-            # 下面的 ThreadRunner 实现更适合同步调用。
-            pass 
-        except Exception:
-            pass
-
-# 重新实现 ThreadRunner 以支持跨线程同步调用并返回结果
 class ThreadRunner(QObject):
+    """
+    辅助类：用于将函数调用封送（Marshal）到主线程执行。
+    """
     def __init__(self, func, *args, **kwargs):
         super().__init__()
         self.func = func
@@ -52,35 +32,28 @@ class ThreadRunner(QObject):
             self.exception = e
 
 def ensure_main_thread(func):
+    """
+    装饰器：确保函数在主线程（GUI线程）中执行。
+    如果在子线程调用，会阻塞等待主线程执行完毕并返回结果。
+    """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        # 检查当前是否为主线程
+        # 如果当前已经是主线程，直接执行
         if QThread.currentThread() == QCoreApplication.instance().thread():
             return func(*args, **kwargs)
         
-        # 如果不是主线程，使用 invokeMethod 将调用调度到主线程
+        # 如果在子线程，创建一个 Runner 并移交给主线程执行
         runner = ThreadRunner(func, *args, **kwargs)
         runner.moveToThread(QCoreApplication.instance().thread())
         
-        # 关键修复：确保传递的是字符串 "run"
-        # 这种方式在 PyQt6 中通常是有效的，只要 runner 是 QObject 且 run 是 pyqtSlot
-        # 报错 'argument 2 has unexpected type function' 说明之前可能传了函数对象
-        # 这里的代码看起来是 "run" 字符串，是正确的。
-        # 可能是之前代码版本的问题，或者是 PyQt6 版本的怪癖。
-        # 无论如何，这个版本保持 "run" 字符串。
-        
+        # 使用 invokeMethod 调用 runner 的 "run" 槽函数
+        # 注意：这里必须传递字符串 "run"，不能传函数对象，否则 PyQt6 会报错
         ret = QMetaObject.invokeMethod(
             runner, 
             "run", 
             Qt.ConnectionType.BlockingQueuedConnection
         )
         
-        if not ret:
-            # 只有在方法调用失败时（如找不到 slot）才会返回 False
-            # 但 invokeMethod 在 BlockingQueuedConnection 下如果是 void 返回值通常返回 True
-            # 如果 runner.run 抛出异常，这里捕获不到，必须通过 runner.exception
-            pass
-
         if runner.exception:
             raise runner.exception
         return runner.result
@@ -501,4 +474,60 @@ class UpdateDialog(MessageBoxBase):
 
 def show_update_dialog(title="更新", initial_status="正在检查更新..."):
     dialog = UpdateDialog(title, initial_status)
+    return dialog
+
+class DownloadProgressDialog(MessageBoxBase):
+    """用于 SKSP 下载的进度对话框，支持取消"""
+    progress_updated = pyqtSignal(int, str)
+    
+    def __init__(self, title="下载中", initial_status="正在连接..."):
+        super().__init__(_default_gui_handler)
+        
+        self.titleLabel = SubtitleLabel(title, self.widget)
+        self.statusLabel = BodyLabel(initial_status, self.widget)
+        self.statusLabel.setWordWrap(True)
+        
+        self.progressBar = ProgressBar(self.widget)
+        self.progressBar.setRange(0, 100)
+        self.progressBar.setValue(0)
+        
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.statusLabel)
+        self.viewLayout.addWidget(self.progressBar)
+        
+        self.widget.setMinimumWidth(600)
+        
+        # 下载对话框只显示取消按钮
+        self.yesButton.setVisible(False)
+        self.cancelButton.setText("取消")
+        
+        self.progress_updated.connect(self._update_progress_safe)
+        self._is_canceled = False
+        
+        # 连接取消按钮信号
+        self.cancelButton.clicked.connect(self.cancel_download)
+
+    @pyqtSlot(int, str)
+    def _update_progress_safe(self, value, status_text):
+        self.progressBar.setValue(value)
+        if status_text:
+            self.statusLabel.setText(status_text)
+        QCoreApplication.processEvents()
+    
+    def update_progress(self, value, status_text=""):
+        if not self._is_canceled:
+            self.progress_updated.emit(value, status_text)
+    
+    def cancel_download(self):
+        self._is_canceled = True
+        self.statusLabel.setText("正在取消...")
+        self.reject()
+
+    def is_canceled(self):
+        return self._is_canceled
+
+@ensure_main_thread
+def show_download_dialog(title="下载中", initial_status="正在连接..."):
+    dialog = DownloadProgressDialog(title, initial_status)
+    dialog.show()
     return dialog

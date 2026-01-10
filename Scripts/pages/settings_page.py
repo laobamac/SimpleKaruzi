@@ -1,24 +1,26 @@
 import os
-
+import threading
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFileDialog
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
 from qfluentwidgets import (
     ScrollArea, BodyLabel, PushButton, LineEdit, FluentIcon,
     SettingCardGroup, SwitchSettingCard, ComboBoxSettingCard,
     PushSettingCard, SpinBox,
     OptionsConfigItem, OptionsValidator, HyperlinkCard,
-    StrongBodyLabel, CaptionLabel, SettingCard, SubtitleLabel,
-    setTheme, Theme, qconfig
+    SubtitleLabel, SettingCard, setTheme, Theme
 )
 
-from Scripts.custom_dialogs import show_confirmation, show_info
+from Scripts.custom_dialogs import show_confirmation, show_info, show_download_dialog
 from Scripts.styles import COLORS, SPACING
 import updater
 
-
 class SettingsPage(ScrollArea):
+    request_sksp_download = pyqtSignal()
+    sksp_update_finished = pyqtSignal(bool, str)
+    update_sksp_btn_signal = pyqtSignal(bool, str)
+
     def __init__(self, parent):
         super().__init__(parent)
         self.setObjectName("settingsPage")
@@ -32,7 +34,12 @@ class SettingsPage(ScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.enableTransparentBackground()
         
-        self.manual_check_thread = None # 保存线程引用防止被回收
+        self.manual_check_thread = None
+        
+        # === 连接信号与槽 ===
+        self.request_sksp_download.connect(self.start_sksp_download)
+        self.sksp_update_finished.connect(self.on_sksp_update_finished)
+        self.update_sksp_btn_signal.connect(self._set_sksp_btn_state)
         
         self._init_ui()
 
@@ -44,18 +51,17 @@ class SettingsPage(ScrollArea):
         header_layout = QVBoxLayout(header_container)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.setSpacing(SPACING["tiny"])
-
-        title_label = SubtitleLabel("设置")
-        header_layout.addWidget(title_label)
-
-        subtitle_label = BodyLabel("配置 SimpleKaruzi 首选项")
-        header_layout.addWidget(subtitle_label)
-
+        header_layout.addWidget(SubtitleLabel("设置"))
+        header_layout.addWidget(BodyLabel("配置 SimpleKaruzi 首选项"))
         self.expandLayout.addWidget(header_container)
         self.expandLayout.addSpacing(SPACING["medium"])
 
         self.build_output_group = self.create_build_output_group()
         self.expandLayout.addWidget(self.build_output_group)
+        
+        # SKSP 资源包设置组
+        self.sksp_group = self.create_sksp_group()
+        self.expandLayout.addWidget(self.sksp_group)
 
         self.macos_group = self.create_macos_version_group()
         self.expandLayout.addWidget(self.macos_group)
@@ -75,7 +81,6 @@ class SettingsPage(ScrollArea):
         self.bottom_widget = QWidget()
         bottom_layout = QHBoxLayout(self.bottom_widget)
         bottom_layout.setContentsMargins(0, SPACING["large"], 0, SPACING["large"])
-        bottom_layout.setSpacing(SPACING["medium"])
         bottom_layout.addStretch()
 
         reset_btn = PushButton("重置所有设置", self.bottom_widget)
@@ -89,12 +94,10 @@ class SettingsPage(ScrollArea):
             card.setIconSize(18, 18)
 
     def _update_widget_value(self, widget, value):
-        if widget is None:
-            return
-            
+        if widget is None: return
         if isinstance(widget, SwitchSettingCard):
             widget.switchButton.setChecked(value)
-        elif isinstance(widget, ComboBoxSettingCard):
+        elif isinstance(widget, (ComboBoxSettingCard, OptionsConfigItem)):
             widget.setValue(value)
         elif isinstance(widget, SpinBox):
             widget.setValue(value)
@@ -105,174 +108,200 @@ class SettingsPage(ScrollArea):
 
     def create_build_output_group(self):
         group = SettingCardGroup("构建输出", self.scrollWidget)
-
         self.output_dir_card = PushSettingCard(
-            "浏览",
-            FluentIcon.FOLDER,
-            "输出目录",
-            self.settings.get("build_output_directory") or "使用临时目录（默认）",
-            group
+            "浏览", FluentIcon.FOLDER, "输出目录",
+            self.settings.get("build_output_directory") or "使用临时目录（默认）", group
         )
         self.output_dir_card.setObjectName("build_output_directory")
         self.output_dir_card.clicked.connect(self.browse_output_directory)
         group.addSettingCard(self.output_dir_card)
-
         return group
+
+    def create_sksp_group(self):
+        group = SettingCardGroup("SKSP 资源包", self.scrollWidget)
+        
+        # 获取当前状态
+        if hasattr(self.controller.backend, 'o'):
+            exists, version = self.controller.backend.o.check_sksp_status()
+        else:
+            exists, version = False, "未知"
+        
+        self.sksp_status_card = SettingCard(
+            FluentIcon.FOLDER, 
+            "当前版本: {}".format(version),
+            "状态: {}".format("已安装" if exists else "未安装"),
+            group
+        )
+        
+        # 添加更新按钮
+        self.update_sksp_btn = PushButton("检查更新", self.sksp_status_card)
+        self.update_sksp_btn.clicked.connect(self.check_sksp_update)
+        self.sksp_status_card.hBoxLayout.addWidget(self.update_sksp_btn)
+        self.sksp_status_card.hBoxLayout.addSpacing(16)
+        
+        group.addSettingCard(self.sksp_status_card)
+        
+        self.auto_sksp_card = SwitchSettingCard(
+            FluentIcon.SYNC, "自动检查更新", "在生成 EFI 时自动检查资源包更新。",
+            configItem=None, parent=group
+        )
+        self.auto_sksp_card.setObjectName("auto_check_sksp_updates")
+        self.auto_sksp_card.switchButton.setChecked(self.settings.get("auto_check_sksp_updates"))
+        self.auto_sksp_card.switchButton.checkedChanged.connect(lambda c: self.settings.set("auto_check_sksp_updates", c))
+        group.addSettingCard(self.auto_sksp_card)
+        
+        return group
+
+    @pyqtSlot(bool, str)
+    def _set_sksp_btn_state(self, enabled, text):
+        """主线程槽：更新按钮状态"""
+        if hasattr(self, 'update_sksp_btn'):
+            self.update_sksp_btn.setEnabled(enabled)
+            self.update_sksp_btn.setText(text)
+
+    def check_sksp_update(self):
+        """在后台线程检查 SKSP 更新"""
+        self.update_sksp_btn.setEnabled(False)
+        self.update_sksp_btn.setText("检查中...")
+        
+        def check_thread():
+            try:
+                # 获取本地和远程版本
+                local_info = self.controller.backend.o.get_local_sksp_info()
+                local_ver = local_info.get("version") if local_info else "0.0.0"
+                
+                remote_info = self.controller.backend.o.fetch_remote_sksp_info()
+                
+                if remote_info and remote_info.get("version") > local_ver:
+                    # 有更新，弹出确认框 (show_confirmation 是线程安全的)
+                    content = "发现 SKSP 新版本: {} ({})\n\n是否立即更新？".format(
+                        remote_info.get('version'), remote_info.get('release_date')
+                    )
+                    if show_confirmation("发现新版本", content):
+                        # 用户确认更新，发送信号到主线程启动下载流程
+                        self.request_sksp_download.emit()
+                    else:
+                        # 用户取消，恢复按钮
+                        self.update_sksp_btn_signal.emit(True, "检查更新")
+                else:
+                    show_info("已是最新", "当前的 SKSP 资源包已是最新版本。")
+                    self.update_sksp_btn_signal.emit(True, "检查更新")
+                    
+            except Exception as e:
+                show_info("错误", f"检查更新失败: {e}")
+                self.update_sksp_btn_signal.emit(True, "检查更新")
+        
+        threading.Thread(target=check_thread, daemon=True).start()
+
+    def start_sksp_download(self):
+        """主线程槽：显示下载对话框并开启下载线程"""
+        # 1. 创建并显示下载对话框
+        self.sksp_dialog = show_download_dialog()
+        
+        # 2. 开启下载线程
+        def download_worker():
+            success, msg = self.controller.backend.o.download_and_install_sksp(self.sksp_dialog)
+            # 下载完成后发送信号
+            self.sksp_update_finished.emit(success, msg)
+
+        threading.Thread(target=download_worker, daemon=True).start()
+
+    def on_sksp_update_finished(self, success, msg):
+        """下载完成后的 UI 处理"""
+        if self.sksp_dialog:
+            self.sksp_dialog.close()
+            self.sksp_dialog = None
+        
+        self.update_sksp_btn.setText("检查更新")
+        self.update_sksp_btn.setEnabled(True)
+        
+        if success:
+            show_info("成功", "SKSP 更新成功！")
+            # 刷新 UI 显示的版本号
+            exists, version = self.controller.backend.o.check_sksp_status()
+            self.sksp_status_card.setTitle(f"当前版本: {version}")
+            self.sksp_status_card.setContent(f"状态: {'已安装' if exists else '未安装'}")
+        elif msg != "用户取消":
+            show_info("失败", f"更新失败: {msg}")
 
     def create_macos_version_group(self):
         group = SettingCardGroup("macOS 版本", self.scrollWidget)
-
         self.include_beta_card = SwitchSettingCard(
-            FluentIcon.UPDATE,
-            "包含测试版 (Beta)",
-            "在版本选择菜单中显示主要的 macOS 测试版。启用以测试新的 macOS 发布版本。",
-            configItem=None,
-            parent=group
+            FluentIcon.UPDATE, "包含测试版 (Beta)", "在版本列表中显示测试版 macOS。",
+            configItem=None, parent=group
         )
         self.include_beta_card.setObjectName("include_beta_versions")
         self.include_beta_card.switchButton.setChecked(self.settings.get_include_beta_versions())
-        self.include_beta_card.switchButton.checkedChanged.connect(lambda checked: self.settings.set("include_beta_versions", checked))
+        self.include_beta_card.switchButton.checkedChanged.connect(lambda c: self.settings.set("include_beta_versions", c))
         group.addSettingCard(self.include_beta_card)
-
         return group
 
     def create_appearance_group(self):
         group = SettingCardGroup("外观", self.scrollWidget)
-
-        self.theme_map = {
-            "跟随系统": "Auto",
-            "亮色": "Light",
-            "暗色": "Dark"
-        }
-        self.theme_map_reverse = {v: k for k, v in self.theme_map.items()}
         
+        self.theme_map = {"跟随系统": "Auto", "亮色": "Light", "暗色": "Dark"}
         theme_items = list(self.theme_map.keys())
+        current_setting = self.settings.get("theme")
+        display_val = {v: k for k, v in self.theme_map.items()}.get(current_setting, "跟随系统")
+
+        self.theme_config = OptionsConfigItem("Appearance", "Theme", display_val, OptionsValidator(theme_items))
         
-        current_theme_setting = self.settings.get("theme")
-        if not current_theme_setting or current_theme_setting not in self.theme_map.values():
-            current_theme_setting = "Auto"
-            
-        current_theme_display = self.theme_map_reverse.get(current_theme_setting, "跟随系统")
-
-        self.theme_config = OptionsConfigItem(
-            "Appearance",
-            "Theme",
-            current_theme_display,
-            OptionsValidator(theme_items)
-        )
-
-        def on_theme_changed(display_value):
-            internal_value = self.theme_map.get(display_value, "Auto")
-            self.settings.set("theme", internal_value)
-            
-            if internal_value == "Dark":
-                setTheme(Theme.DARK)
-            elif internal_value == "Light":
-                setTheme(Theme.LIGHT)
-            else:
-                setTheme(Theme.AUTO)
+        def on_theme_changed(val):
+            internal = self.theme_map.get(val, "Auto")
+            self.settings.set("theme", internal)
+            setTheme(Theme.DARK if internal == "Dark" else Theme.LIGHT if internal == "Light" else Theme.AUTO)
 
         self.theme_config.valueChanged.connect(on_theme_changed)
-
+        
         self.theme_card = ComboBoxSettingCard(
-            self.theme_config,
-            FluentIcon.BRUSH,
-            "主题",
-            "选择应用程序的颜色主题。",
-            theme_items,
-            group
+            self.theme_config, FluentIcon.BRUSH, "主题", "选择应用程序的颜色主题。", theme_items, group
         )
         self.theme_card.setObjectName("theme")
         group.addSettingCard(self.theme_card)
-
         return group
 
     def create_update_settings_group(self):
         group = SettingCardGroup("更新与下载", self.scrollWidget)
-
         self.auto_update_card = SwitchSettingCard(
-            FluentIcon.UPDATE,
-            "启动时检查更新",
-            "应用程序启动时自动检查 SimpleKaruzi 更新，以保持最新状态。",
-            configItem=None,
-            parent=group
+            FluentIcon.UPDATE, "启动时检查更新", "启动时自动检查新版本。",
+            configItem=None, parent=group
         )
         self.auto_update_card.setObjectName("auto_update_check")
         self.auto_update_card.switchButton.setChecked(self.settings.get_auto_update_check())
-        self.auto_update_card.switchButton.checkedChanged.connect(lambda checked: self.settings.set("auto_update_check", checked))
+        self.auto_update_card.switchButton.checkedChanged.connect(lambda c: self.settings.set("auto_update_check", c))
         group.addSettingCard(self.auto_update_card)
 
         self.manual_update_card = PushSettingCard(
-            "检查更新",
-            FluentIcon.SYNC,
-            "手动检查",
-            "立即检查是否有新版本可用",
-            group
+            "检查更新", FluentIcon.SYNC, "手动检查", "立即检查是否有新版本可用", group
         )
         self.manual_update_card.clicked.connect(self.manual_check_update)
         group.addSettingCard(self.manual_update_card)
-
         return group
 
     def create_advanced_group(self):
         group = SettingCardGroup("高级设置", self.scrollWidget)
-
         self.debug_logging_card = SwitchSettingCard(
-            FluentIcon.DEVELOPER_TOOLS,
-            "启用调试日志",
-            "启用应用程序的详细调试日志，用于高级故障排除和诊断。",
-            configItem=None,
-            parent=group
+            FluentIcon.DEVELOPER_TOOLS, "启用调试日志", "启用详细日志用于故障排除。",
+            configItem=None, parent=group
         )
         self.debug_logging_card.setObjectName("enable_debug_logging")
         self.debug_logging_card.switchButton.setChecked(self.settings.get_enable_debug_logging())
-        self.debug_logging_card.switchButton.checkedChanged.connect(lambda checked: self.settings.set("enable_debug_logging", checked))
+        self.debug_logging_card.switchButton.checkedChanged.connect(lambda c: self.settings.set("enable_debug_logging", c))
         group.addSettingCard(self.debug_logging_card)
-
         return group
 
     def create_help_group(self):
         group = SettingCardGroup("帮助与文档", self.scrollWidget)
-
-        self.opencore_docs_card = HyperlinkCard(
-            "https://dortania.github.io/OpenCore-Install-Guide/",
-            "OpenCore 安装指南",
-            FluentIcon.BOOK_SHELF,
-            "OpenCore 文档",
-            "使用 OpenCore 安装 macOS 的完整指南",
-            group
-        )
-        group.addSettingCard(self.opencore_docs_card)
-
-        self.troubleshoot_card = HyperlinkCard(
-            "https://dortania.github.io/OpenCore-Install-Guide/troubleshooting/troubleshooting.html",
-            "故障排除",
-            FluentIcon.HELP,
-            "故障排除指南",
-            "常见 OpenCore 安装问题的解决方案",
-            group
-        )
-        group.addSettingCard(self.troubleshoot_card)
-
-        self.github_card = HyperlinkCard(
-            "https://github.com/laobamac/SimpleKaruzi",
-            "在 GitHub 上查看",
-            FluentIcon.GITHUB,
-            "SimpleKaruzi 仓库",
-            "报告问题、贡献代码或查看源代码",
-            group
-        )
-        group.addSettingCard(self.github_card)
-
+        group.addSettingCard(HyperlinkCard(
+            "https://dortania.github.io/OpenCore-Install-Guide/", "OpenCore 安装指南", FluentIcon.BOOK_SHELF, "OpenCore 文档", "安装 macOS 的完整指南", group
+        ))
+        group.addSettingCard(HyperlinkCard(
+            "https://github.com/laobamac/SimpleKaruzi", "在 GitHub 上查看", FluentIcon.GITHUB, "SimpleKaruzi 仓库", "源码与 Issue", group
+        ))
         return group
 
     def browse_output_directory(self):
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            "选择构建输出目录",
-            os.path.expanduser("~")
-        )
-
+        folder = QFileDialog.getExistingDirectory(self, "选择构建输出目录", os.path.expanduser("~"))
         if folder:
             self.settings.set("build_output_directory", folder)
             self.output_dir_card.setContent(folder)
@@ -284,7 +313,6 @@ class SettingsPage(ScrollArea):
         self.manual_update_card.setContent("正在连接服务器...")
         
         backend = self.controller.backend
-        # 实例化 Updater
         self.upd_instance = updater.Updater(
             utils_instance=backend.u,
             github_instance=backend.github,
@@ -293,54 +321,42 @@ class SettingsPage(ScrollArea):
             integrity_checker_instance=backend.integrity_checker
         )
         
-        # 获取 QThread
         self.manual_check_thread = self.upd_instance.create_checker_thread()
-        
-        # 连接信号
         self.manual_check_thread.update_available.connect(self._on_manual_update_available)
         self.manual_check_thread.no_update.connect(self._on_manual_no_update)
         self.manual_check_thread.check_failed.connect(self._on_manual_check_failed)
         self.manual_check_thread.finished.connect(self._on_manual_check_finished)
-        
-        # 启动线程
         self.manual_check_thread.start()
 
     def _on_manual_update_available(self, files_to_update):
-        # 线程结束后调用
-        self.upd_instance.perform_update_process(files_to_update)
         self.manual_update_card.setContent("发现新版本")
         self.controller.update_status("发现更新", "success")
+        self.upd_instance.perform_update_process(files_to_update)
 
     def _on_manual_no_update(self):
-        show_info("检查完成", "当前已是最新版本！")
         self.manual_update_card.setContent("已是最新")
         self.controller.update_status("已是最新版本", "success")
+        show_info("检查完成", "当前已是最新版本！")
 
     def _on_manual_check_failed(self, error_msg):
-        show_info("检查失败", error_msg)
         self.manual_update_card.setContent("检查失败")
         self.controller.update_status("更新检查失败", "error")
+        show_info("检查失败", error_msg)
 
     def _on_manual_check_finished(self):
         self.manual_update_card.setEnabled(True)
         self.manual_update_card.button.setText("检查更新")
-        # 清理线程引用
         self.manual_check_thread = None
 
     def reset_to_defaults(self):
-        result = show_confirmation("重置设置", "您确定要将所有设置重置为默认值吗？")
-
-        if result:
+        if show_confirmation("重置设置", "确定要重置所有设置吗？"):
             self.settings.settings = self.settings.defaults.copy()
             self.settings.save_settings()
-
+            
             for widget in self.findChildren(QWidget):
                 key = widget.objectName()
                 if key and key in self.settings.defaults:
-                    default_value = self.settings.defaults.get(key)
-                    self._update_widget_value(widget, default_value)
+                    self._update_widget_value(widget, self.settings.defaults.get(key))
             
-            # 使用 theme_card 而不是 theme_config 来重置显示
             self.theme_card.setValue("跟随系统")
-            
-            self.controller.update_status("所有设置已重置为默认值", "success")
+            self.controller.update_status("所有设置已重置", "success")

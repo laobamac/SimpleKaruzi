@@ -184,7 +184,7 @@ kexts = [
         requires_kexts = ["IO80211ElCap"],
         download_info = {
             "id": 348147192, 
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Wifi/corecaptureElCap-v1.0.2.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Wifi/corecaptureElCap-v1.0.2.zip"
         }
     ),
     KextInfo(
@@ -196,7 +196,7 @@ kexts = [
         requires_kexts = ["corecaptureElCap"],
         download_info = {
             "id": 128321732, 
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Wifi/IO80211ElCap-v2.0.1.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Wifi/IO80211ElCap-v2.0.1.zip"
         }
     ),
     KextInfo(
@@ -207,7 +207,7 @@ kexts = [
         requires_kexts = ["AMFIPass", "IOSkywalkFamily"],
         download_info = {
             "id": 817294638, 
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/main/payloads/Kexts/Wifi/IO80211FamilyLegacy-v1.0.0.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/main/payloads/Kexts/Wifi/IO80211FamilyLegacy-v1.0.0.zip"
         }
     ),
     KextInfo(
@@ -218,7 +218,7 @@ kexts = [
         requires_kexts = ["AMFIPass", "IO80211FamilyLegacy"],
         download_info = {
             "id": 926584761, 
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/main/payloads/Kexts/Wifi/IOSkywalkFamily-v1.2.0.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/main/payloads/Kexts/Wifi/IOSkywalkFamily-v1.2.0.zip"
         }
     ),
     KextInfo(
@@ -348,7 +348,7 @@ kexts = [
         },
         download_info = {
             "id": 736194363, 
-            "url": "https://github.com/lzhoang2801/lzhoang2801.github.io/raw/main/public/extra-files/AppleIGB-v5.11.4.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/lzhoang2801/lzhoang2801.github.io/raw/main/public/extra-files/AppleIGB-v5.11.4.zip"
         }
     ),
     KextInfo(
@@ -385,7 +385,7 @@ kexts = [
         min_darwin_version = "20.0.0",
         download_info = {
             "id": 821327912,
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Ethernet/CatalinaBCM5701Ethernet-v1.0.2.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Ethernet/CatalinaBCM5701Ethernet-v1.0.2.zip"
         }
     ),
     KextInfo(
@@ -398,7 +398,7 @@ kexts = [
         },
         download_info = {
             "id": 79378595,
-            "url": "https://github.com/TomHeaven/HoRNDIS/releases/download/rel9.3_2/Release.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/TomHeaven/HoRNDIS/releases/download/rel9.3_2/Release.zip"
         }
     ),
     KextInfo(
@@ -451,7 +451,7 @@ kexts = [
         },
         download_info = {
             "id": 10460478, 
-            "url": "https://github.com/lzhoang2801/lzhoang2801.github.io/raw/main/public/extra-files/RealtekRTL8100-v2.0.1.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/lzhoang2801/lzhoang2801.github.io/raw/main/public/extra-files/RealtekRTL8100-v2.0.1.zip"
         }
     ),
     KextInfo(
@@ -464,7 +464,7 @@ kexts = [
         },
         download_info = {
             "id": 130015132, 
-            "url": "https://github.com/Mieze/RTL8111_driver_for_OS_X/releases/download/2.4.2/RealtekRTL8111-V2.4.2.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/Mieze/RTL8111_driver_for_OS_X/releases/download/2.4.2/RealtekRTL8111-V2.4.2.zip"
         }
     ),
     KextInfo(
@@ -505,7 +505,7 @@ kexts = [
         },
         download_info = {
             "id": 185465401, 
-            "url": "https://github.com/daliansky/OS-X-USB-Inject-All/releases/download/v0.8.0/XHCI-unsupported.kext.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/daliansky/OS-X-USB-Inject-All/releases/download/v0.8.0/XHCI-unsupported.kext.zip"
         }
     ),
     KextInfo(
@@ -653,7 +653,7 @@ kexts = [
         conflict_group_id = "SATA",
         download_info = {
             "id": 927362352,
-            "url": "https://raw.githubusercontent.com/lzhoang2801/lzhoang2801.github.io/refs/heads/main/public/extra-files/CtlnaAHCIPort-v3.4.1.zip",
+            "url": "https://gitapi.simplehac.top/https://raw.githubusercontent.com/lzhoang2801/lzhoang2801.github.io/refs/heads/main/public/extra-files/CtlnaAHCIPort-v3.4.1.zip",
             "sha256": "c8cf54f8b98995d076f365765025068e3d612f6337e279774203441c06f1a474"
         }
     ),
@@ -665,7 +665,7 @@ kexts = [
         conflict_group_id = "SATA",
         download_info = {
             "id": 239471623,
-            "url": "https://raw.githubusercontent.com/lzhoang2801/lzhoang2801.github.io/refs/heads/main/public/extra-files/SATA-unsupported-v0.9.2.zip",
+            "url": "https://gitapi.simplehac.top/https://raw.githubusercontent.com/lzhoang2801/lzhoang2801.github.io/refs/heads/main/public/extra-files/SATA-unsupported-v0.9.2.zip",
             "sha256": "942395056afa1e1d0e06fb501ab7c0130bf687d00e08b02c271844769056a57c"
         }
     ),
@@ -736,7 +736,7 @@ kexts = [
         },
         download_info = {
             "id": 823728912, 
-            "url": "https://github.com/lzhoang2801/lzhoang2801.github.io/raw/refs/heads/main/public/extra-files/VoodooTSCSync-v1.1.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/lzhoang2801/lzhoang2801.github.io/raw/refs/heads/main/public/extra-files/VoodooTSCSync-v1.1.zip"
         }
     ),
     KextInfo(
@@ -773,7 +773,7 @@ kexts = [
         requires_kexts = ["Lilu"],
         download_info = {
             "id": 926491527, 
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/main/payloads/Kexts/Acidanthera/AMFIPass-v1.4.1-RELEASE.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/main/payloads/Kexts/Acidanthera/AMFIPass-v1.4.1-RELEASE.zip"
         }
     ),
     KextInfo(
@@ -783,7 +783,7 @@ kexts = [
         min_darwin_version = "21.4.0",
         download_info = {
             "id": 913826421,
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Misc/ASPP-Override-v1.0.1.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Misc/ASPP-Override-v1.0.1.zip"
         }
     ),
     KextInfo(
@@ -793,7 +793,7 @@ kexts = [
         min_darwin_version = "22.0.0",
         download_info = {
             "id": 736296452, 
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Misc/AppleIntelCPUPowerManagement-v1.0.0.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Misc/AppleIntelCPUPowerManagement-v1.0.0.zip"
         }
     ),
     KextInfo(
@@ -803,7 +803,7 @@ kexts = [
         min_darwin_version = "22.0.0",
         download_info = {
             "id": 932639706, 
-            "url": "https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Misc/AppleIntelCPUPowerManagementClient-v1.0.0.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/dortania/OpenCore-Legacy-Patcher/raw/refs/heads/main/payloads/Kexts/Misc/AppleIntelCPUPowerManagementClient-v1.0.0.zip"
         }
     ),
     KextInfo(
@@ -812,7 +812,7 @@ kexts = [
         category = "Extras",
         download_info = {
             "id": 738162736, 
-            "url": "https://github.com/acidanthera/bugtracker/files/3703498/AppleMCEReporterDisabler.kext.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/acidanthera/bugtracker/files/3703498/AppleMCEReporterDisabler.kext.zip"
         }
     ),
     KextInfo(

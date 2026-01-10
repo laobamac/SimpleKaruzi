@@ -226,7 +226,7 @@ class BuildPage(ScrollArea):
                 "1. 通过安装补丁 (OCLP/OCLP-Mod) 允许在新版 macOS 上恢复被放弃的 GPU 和 Broadcom WiFi 支持，并在 macOS Tahoe 26 上启用 AppleHDA。<br>"
                 "2. OCLP 需要禁用 SIP 以应用自定义内核补丁，这可能会导致系统不稳定、安全风险和更新问题。<br>"
                 "<b><font color=\"{info_color}\">关于 macOS Tahoe 26 的支持：</font></b><br>"
-                "要修补 macOS Tahoe 26，必须下载 OpenCore-Patcher 3.0.0 或更新版本，请访问我的仓库：<a href=\"https://github.com/lzhoang2801/OpenCore-Legacy-Patcher/releases/tag/3.0.0\">lzhoang2801/OpenCore-Legacy-Patcher</a>。<br>"
+                "要修补 macOS Tahoe 26，必须下载 OCLP-Mod 3.1.3 或更新版本，请访问我的仓库：<a href=\"https://github.com/laobamac/OCLP-Mod/releases\">laobamac/OCLP-Mod</a>。<br>"
                 "官方 Dortania 发布版或旧版补丁<b>将无法</b>在 macOS Tahoe 26 上工作。"
             ).format(error_color=COLORS["error"], info_color="#00BCD4")
             if not show_confirmation("安装补丁警告", content):

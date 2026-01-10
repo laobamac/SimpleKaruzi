@@ -10,10 +10,11 @@ class Settings:
         self.defaults = {
             "build_output_directory": "",
             "include_beta_versions": False,
-            "theme": "Auto", # 默认为跟随系统
+            "theme": "Auto",
             "auto_update_check": True,
             "enable_debug_logging": False,
-            "window_geometry": None
+            "window_geometry": None,
+            "auto_check_sksp_updates": True
         }
 
         self.settings_file = self._get_settings_file_path()
@@ -26,7 +27,6 @@ class Settings:
         - 打包环境：存放在系统的用户数据目录 (AppData / Application Support)，确保设置不丢失。
         """
         if getattr(sys, 'frozen', False):
-            # === 打包环境 (PyInstaller) ===
             app_name = "SimpleKaruzi"
             
             if platform.system() == "Windows":
@@ -36,10 +36,8 @@ class Settings:
             elif platform.system() == "Darwin":
                 base_dir = os.path.expanduser("~/Library/Application Support")
             else:
-                # Linux / 其他
                 base_dir = os.path.expanduser("~/.config")
-            
-            # 创建应用专属目录
+
             app_dir = os.path.join(base_dir, app_name)
             if not os.path.exists(app_dir):
                 try:
