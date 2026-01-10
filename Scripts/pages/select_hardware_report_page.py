@@ -443,11 +443,32 @@ class SelectHardwareReportPage(QWidget):
             
             def run_export_thread():
                 try:
-                    output = self.controller.backend.r.run({
-                        "args": [hardware_sniffer_or_error, "-e", "-o", report_dir]
-                    })
-                    
-                    success = output[-1] == 0
+                    import subprocess
+        
+                    # 构建命令
+                    cmd = [hardware_sniffer_or_error, "-e", "-o", report_dir]
+        
+                    # 创建启动信息来隐藏控制台窗口
+                    startupinfo = None
+                    if os.name == "nt":
+                        startupinfo = subprocess.STARTUPINFO()
+                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                        startupinfo.wShowWindow = subprocess.SW_HIDE
+        
+                    self.controller.backend.u.log_message("[导出] 正在静默运行 Hardware Sniffer...", level="INFO")
+        
+                    # 使用 subprocess 运行，捕获输出
+                    result = subprocess.run(
+                        cmd,
+                        startupinfo=startupinfo,
+                        capture_output=True,  # 捕获标准输出和错误输出
+                        text=True,            # 以文本形式返回输出
+                        encoding='utf-8',     # 指定编码
+                        errors='ignore',      # 忽略解码错误
+                        timeout=300,          # 5分钟超时
+                    )
+        
+                    success = result.returncode == 0
                     error_message = ""
                     report_path = ""
                     acpi_dir = ""
@@ -456,17 +477,48 @@ class SelectHardwareReportPage(QWidget):
                         report_path = os.path.join(report_dir, "Report.json")
                         acpi_dir = os.path.join(report_dir, "ACPI")
                         error_message = "导出成功"
+            
+                        # 记录成功日志
+                        self.controller.backend.u.log_message("[导出] Hardware Sniffer 运行成功", level="INFO")
+                        if result.stdout:
+                            self.controller.backend.u.log_message(f"[导出] 输出: {result.stdout[:200]}", level="DEBUG")
                     else:
-                        error_code = output[-1]
-                        if error_code == 3: error_message = "收集硬件信息出错。"
-                        elif error_code == 4: error_message = "生成硬件报告出错。"
-                        elif error_code == 5: error_message = "导出 ACPI 表出错。"
-                        else: error_message = "未知错误。"
+                        error_code = result.returncode
+                        # 尝试从标准错误中获取更多信息
+                        stderr_output = result.stderr.strip() if result.stderr else ""
+            
+                        if error_code == 3: 
+                            error_message = "收集硬件信息出错。"
+                        elif error_code == 4: 
+                            error_message = "生成硬件报告出错。"
+                        elif error_code == 5: 
+                            error_message = "导出 ACPI 表出错。"
+                        else: 
+                            error_message = f"未知错误 (代码: {error_code})。"
+            
+                        if stderr_output:
+                            error_message += f"\n详细错误: {stderr_output[:500]}"  # 限制长度
+            
+                        # 记录错误日志
+                        self.controller.backend.u.log_message(f"[导出] Hardware Sniffer 失败: {error_message}", level="ERROR")
+                        if stderr_output:
+                            self.controller.backend.u.log_message(f"[导出] 错误输出: {stderr_output}", level="ERROR")
 
                     paths = "{}|||{}".format(report_path, acpi_dir) if report_path and acpi_dir else ""
                     self.export_finished_signal.emit(success, "export_complete", error_message, paths)
+        
+                except subprocess.TimeoutExpired:
+                    error_msg = "Hardware Sniffer 运行超时 (5分钟)"
+                    self.controller.backend.u.log_message(f"[导出] {error_msg}", level="ERROR")
+                    self.export_finished_signal.emit(False, "export_complete", error_msg, "")
+                except FileNotFoundError:
+                    error_msg = f"找不到可执行文件: {hardware_sniffer_or_error}"
+                    self.controller.backend.u.log_message(f"[导出] {error_msg}", level="ERROR")
+                    self.export_finished_signal.emit(False, "export_complete", error_msg, "")
                 except Exception as e:
-                    self.export_finished_signal.emit(False, "export_complete", "异常：{}".format(e), "")
+                    error_msg = f"运行 Hardware Sniffer 时发生异常: {e}"
+                    self.controller.backend.u.log_message(f"[导出] {error_msg}", level="ERROR")
+                    self.export_finished_signal.emit(False, "export_complete", error_msg, "")
             
             thread = threading.Thread(target=run_export_thread, daemon=True)
             thread.start()

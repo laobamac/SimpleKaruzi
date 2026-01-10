@@ -464,12 +464,8 @@ class BuildPage(ScrollArea):
         
         usb_mapping_instructions = (
             "1. 使用 USBToolBox 工具映射 USB 端口<br>"
-            "2. 将创建的 UTBMap.kext 添加到 EFI{path_sep}OC{path_sep}Kexts 文件夹中<br>"
-            "3. 从 EFI{path_sep}OC{path_sep}Kexts 文件夹中删除 UTBDefault.kext<br>"
-            "4. 使用 ProperTree 编辑 config.plist：<br>"
-            "   a. 运行 OC Snapshot (Command/Ctrl + R)<br>"
-            "   b. 如果每个控制器的端口数超过 15 个，请启用 XhciPortLimit quirk<br>"
-            "   c. 完成后保存文件。"
+            "2. 将创建的 UTBMap.kext 添加到 EFI{path_sep}OC{path_sep}Kexts 文件夹中并启用<br>"
+            "3. 从 EFI{path_sep}OC{path_sep}Kexts 文件夹和config.plist中删除 UTBDefault.kext<br>"
         ).format(path_sep=path_sep)
         
         usb_label = BodyLabel(usb_mapping_instructions)

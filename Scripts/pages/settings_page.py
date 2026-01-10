@@ -1,9 +1,8 @@
 import os
-import threading
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFileDialog
 )
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, QObject
 from qfluentwidgets import (
     ScrollArea, BodyLabel, PushButton, LineEdit, FluentIcon,
     SettingCardGroup, SwitchSettingCard, ComboBoxSettingCard,
@@ -16,11 +15,51 @@ from Scripts.custom_dialogs import show_confirmation, show_info, show_download_d
 from Scripts.styles import COLORS, SPACING
 import updater
 
-class SettingsPage(ScrollArea):
-    request_sksp_download = pyqtSignal()
-    sksp_update_finished = pyqtSignal(bool, str)
-    update_sksp_btn_signal = pyqtSignal(bool, str)
+class UpdateCheckWorker(QObject):
+    finished = pyqtSignal(bool, dict) # has_update, info/error
 
+    def __init__(self, backend):
+        super().__init__()
+        self.backend = backend
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            local_info = self.backend.o.get_local_sksp_info()
+            local_ver = local_info.get("version") if local_info else "0.0.0"
+            
+            remote_info = self.backend.o.fetch_remote_sksp_info()
+            
+            if remote_info and remote_info.get("version") > local_ver:
+                self.finished.emit(True, remote_info)
+            else:
+                if not remote_info:
+                    self.finished.emit(False, {"error": "无法获取远程信息"})
+                else:
+                    self.finished.emit(False, {})
+        except Exception as e:
+            self.finished.emit(False, {"error": str(e)})
+
+class DownloadWorker(QObject):
+    finished = pyqtSignal(bool, str) # success, message
+
+    def __init__(self, backend, dialog):
+        super().__init__()
+        self.backend = backend
+        self.dialog = dialog
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            success, msg = self.backend.o.download_and_install_sksp(self.dialog)
+            self.finished.emit(success, msg)
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+class SettingsPage(ScrollArea):
+    # 信号
+    request_sksp_download = pyqtSignal()
+    
     def __init__(self, parent):
         super().__init__(parent)
         self.setObjectName("settingsPage")
@@ -34,12 +73,13 @@ class SettingsPage(ScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.enableTransparentBackground()
         
-        self.manual_check_thread = None
+        self.check_thread = None
+        self.check_worker = None
+        self.download_thread = None
+        self.download_worker = None
+        self.sksp_dialog = None
         
-        # === 连接信号与槽 ===
         self.request_sksp_download.connect(self.start_sksp_download)
-        self.sksp_update_finished.connect(self.on_sksp_update_finished)
-        self.update_sksp_btn_signal.connect(self._set_sksp_btn_state)
         
         self._init_ui()
 
@@ -59,7 +99,6 @@ class SettingsPage(ScrollArea):
         self.build_output_group = self.create_build_output_group()
         self.expandLayout.addWidget(self.build_output_group)
         
-        # SKSP 资源包设置组
         self.sksp_group = self.create_sksp_group()
         self.expandLayout.addWidget(self.sksp_group)
 
@@ -120,7 +159,6 @@ class SettingsPage(ScrollArea):
     def create_sksp_group(self):
         group = SettingCardGroup("SKSP 资源包", self.scrollWidget)
         
-        # 获取当前状态
         if hasattr(self.controller.backend, 'o'):
             exists, version = self.controller.backend.o.check_sksp_status()
         else:
@@ -133,7 +171,6 @@ class SettingsPage(ScrollArea):
             group
         )
         
-        # 添加更新按钮
         self.update_sksp_btn = PushButton("检查更新", self.sksp_status_card)
         self.update_sksp_btn.clicked.connect(self.check_sksp_update)
         self.sksp_status_card.hBoxLayout.addWidget(self.update_sksp_btn)
@@ -152,77 +189,95 @@ class SettingsPage(ScrollArea):
         
         return group
 
-    @pyqtSlot(bool, str)
-    def _set_sksp_btn_state(self, enabled, text):
-        """主线程槽：更新按钮状态"""
-        if hasattr(self, 'update_sksp_btn'):
-            self.update_sksp_btn.setEnabled(enabled)
-            self.update_sksp_btn.setText(text)
+    def refresh_sksp_status(self):
+        """公开方法：刷新 SKSP 状态显示"""
+        if hasattr(self.controller.backend, 'o'):
+            exists, version = self.controller.backend.o.check_sksp_status()
+            self.sksp_status_card.setTitle("当前版本: {}".format(version))
+            self.sksp_status_card.setContent("状态: {}".format("已安装" if exists else "未安装"))
 
     def check_sksp_update(self):
-        """在后台线程检查 SKSP 更新"""
+        """使用 QThread 启动检查"""
         self.update_sksp_btn.setEnabled(False)
         self.update_sksp_btn.setText("检查中...")
         
-        def check_thread():
-            try:
-                # 获取本地和远程版本
-                local_info = self.controller.backend.o.get_local_sksp_info()
-                local_ver = local_info.get("version") if local_info else "0.0.0"
-                
-                remote_info = self.controller.backend.o.fetch_remote_sksp_info()
-                
-                if remote_info and remote_info.get("version") > local_ver:
-                    # 有更新，弹出确认框 (show_confirmation 是线程安全的)
-                    content = "发现 SKSP 新版本: {} ({})\n\n是否立即更新？".format(
-                        remote_info.get('version'), remote_info.get('release_date')
-                    )
-                    if show_confirmation("发现新版本", content):
-                        # 用户确认更新，发送信号到主线程启动下载流程
-                        self.request_sksp_download.emit()
-                    else:
-                        # 用户取消，恢复按钮
-                        self.update_sksp_btn_signal.emit(True, "检查更新")
-                else:
-                    show_info("已是最新", "当前的 SKSP 资源包已是最新版本。")
-                    self.update_sksp_btn_signal.emit(True, "检查更新")
-                    
-            except Exception as e:
-                show_info("错误", f"检查更新失败: {e}")
-                self.update_sksp_btn_signal.emit(True, "检查更新")
+        self.check_thread = QThread()
+        self.check_worker = UpdateCheckWorker(self.controller.backend)
+        self.check_worker.moveToThread(self.check_thread)
         
-        threading.Thread(target=check_thread, daemon=True).start()
+        self.check_thread.started.connect(self.check_worker.run)
+        self.check_worker.finished.connect(self.on_sksp_check_finished)
+        self.check_worker.finished.connect(self.check_thread.quit)
+        self.check_worker.finished.connect(self.check_worker.deleteLater)
+        
+        self.check_thread.finished.connect(self._cleanup_check_thread)
+        
+        self.check_thread.start()
+
+    def _cleanup_check_thread(self):
+        """线程彻底结束后清理引用"""
+        if self.check_thread:
+            self.check_thread.deleteLater()
+            self.check_thread = None
+
+    @pyqtSlot(bool, dict)
+    def on_sksp_check_finished(self, has_update, info):
+        self.update_sksp_btn.setText("检查更新")
+        self.update_sksp_btn.setEnabled(True)
+        # 注意：这里不再设置 self.check_thread = None，由 _cleanup_check_thread 处理
+        
+        if has_update:
+            self.update_sksp_btn.setText("更新")
+            content = "发现 SKSP 新版本: {} ({})\n\n是否立即更新？".format(
+                info.get('version'), info.get('release_date')
+            )
+            if show_confirmation("发现新版本", content):
+                self.start_sksp_download()
+        else:
+            if "error" in info:
+                show_info("错误", "检查更新失败: {}".format(info["error"]))
+            else:
+                show_info("已是最新", "当前的 SKSP 资源包已是最新版本。")
 
     def start_sksp_download(self):
-        """主线程槽：显示下载对话框并开启下载线程"""
-        # 1. 创建并显示下载对话框
+        """使用 QThread 启动下载"""
+        self.update_sksp_btn.setEnabled(False)
         self.sksp_dialog = show_download_dialog()
         
-        # 2. 开启下载线程
-        def download_worker():
-            success, msg = self.controller.backend.o.download_and_install_sksp(self.sksp_dialog)
-            # 下载完成后发送信号
-            self.sksp_update_finished.emit(success, msg)
+        self.download_thread = QThread()
+        self.download_worker = DownloadWorker(self.controller.backend, self.sksp_dialog)
+        self.download_worker.moveToThread(self.download_thread)
+        
+        self.download_thread.started.connect(self.download_worker.run)
+        self.download_worker.finished.connect(self.on_sksp_update_finished)
+        self.download_worker.finished.connect(self.download_thread.quit)
+        self.download_worker.finished.connect(self.download_worker.deleteLater)
+        
+        self.download_thread.finished.connect(self._cleanup_download_thread)
+        
+        self.download_thread.start()
 
-        threading.Thread(target=download_worker, daemon=True).start()
+    def _cleanup_download_thread(self):
+        """线程彻底结束后清理引用"""
+        if self.download_thread:
+            self.download_thread.deleteLater()
+            self.download_thread = None
 
+    @pyqtSlot(bool, str)
     def on_sksp_update_finished(self, success, msg):
-        """下载完成后的 UI 处理"""
         if self.sksp_dialog:
             self.sksp_dialog.close()
             self.sksp_dialog = None
         
         self.update_sksp_btn.setText("检查更新")
         self.update_sksp_btn.setEnabled(True)
+        # 注意：这里不再设置 self.download_thread = None，由 _cleanup_download_thread 处理
         
         if success:
             show_info("成功", "SKSP 更新成功！")
-            # 刷新 UI 显示的版本号
-            exists, version = self.controller.backend.o.check_sksp_status()
-            self.sksp_status_card.setTitle(f"当前版本: {version}")
-            self.sksp_status_card.setContent(f"状态: {'已安装' if exists else '未安装'}")
+            self.refresh_sksp_status()
         elif msg != "用户取消":
-            show_info("失败", f"更新失败: {msg}")
+            show_info("失败", "更新失败: {}".format(msg))
 
     def create_macos_version_group(self):
         group = SettingCardGroup("macOS 版本", self.scrollWidget)

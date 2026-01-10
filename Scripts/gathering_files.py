@@ -58,7 +58,11 @@ class gatheringFiles:
         
     def update_download_database(self, kexts, download_history):
         download_database = download_history.copy()
-        dortania_builds_data = self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
+        dortania_builds_data = json.loads(
+            json.dumps(
+                self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
+            ).replace("https://github.com", "https://gitapi.simplehac.top/https://github.com")
+        )
         seen_repos = set()
 
         def add_product_to_download_database(products):

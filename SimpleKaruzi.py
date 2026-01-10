@@ -49,11 +49,16 @@ class OCS(FluentWindow):
         self._setup_backend_handlers()
         self.init_navigation()
         
+        # 启动后延时检查 SKSP
         QTimer.singleShot(1000, self.check_startup_tasks)
 
     def check_startup_tasks(self):
+
         self.backend.o.check_sksp_on_startup()
-        
+
+        if hasattr(self, 'settingsPage'):
+            self.settingsPage.refresh_sksp_status()
+
         if self.settings.get_auto_update_check():
             updater.Updater(
                 utils_instance=self.backend.u,
