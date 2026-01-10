@@ -12,6 +12,7 @@ import sys
 import json
 import time
 import urllib.request
+import ssl  # 新增：用于处理 SSL 证书
 
 os_name = platform.system()
 
@@ -23,17 +24,20 @@ class gatheringFiles:
         self.fetcher = resource_fetcher_instance if resource_fetcher_instance else resource_fetcher.ResourceFetcher()
         self.integrity_checker = integrity_checker_instance if integrity_checker_instance else integrity_checker.IntegrityChecker()
         
-        self.dortania_builds_url = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/dortania/build-repo/builds/latest.json"
-        self.ocbinarydata_url = "https://gitapi.simplehac.top/https://github.com/acidanthera/OcBinaryData/archive/refs/heads/master.zip"
+        self.dortania_builds_url = "https://raw.githubusercontent.com/dortania/build-repo/builds/latest.json"
+        self.ocbinarydata_url = "https://github.com/acidanthera/OcBinaryData/archive/refs/heads/master.zip"
+        # SKSP Manifest URL
         self.sksp_manifest_url = "https://next.oclpapi.simplehac.cn/SKSP/manifest.json"
         
-        self.amd_vanilla_patches_url = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/AMD-OSX/AMD_Vanilla/beta/patches.plist"
-        self.aquantia_macos_patches_url = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/CaseySJ/Aquantia-macOS-Patches/refs/heads/main/CaseySJ-Aquantia-Patch-Sets-1-and-2.plist"
-        self.hyper_threading_patches_url = "https://gitapi.simplehac.top/https://github.com/b00t0x/CpuTopologyRebuild/raw/refs/heads/master/patches_ht.plist"
+        self.amd_vanilla_patches_url = "https://raw.githubusercontent.com/AMD-OSX/AMD_Vanilla/beta/patches.plist"
+        self.aquantia_macos_patches_url = "https://raw.githubusercontent.com/CaseySJ/Aquantia-macOS-Patches/refs/heads/main/CaseySJ-Aquantia-Patch-Sets-1-and-2.plist"
+        self.hyper_threading_patches_url = "https://github.com/b00t0x/CpuTopologyRebuild/raw/refs/heads/master/patches_ht.plist"
         
         self.temporary_dir = self.utils.get_temporary_dir()
         
+        # === 持久化存储路径设置 ===
         if getattr(sys, 'frozen', False):
+            # 打包环境：使用系统用户数据目录
             app_name = "SimpleKaruzi"
             if platform.system() == "Windows":
                 base_dir = os.environ.get("APPDATA", os.path.expanduser("~"))
@@ -44,7 +48,9 @@ class gatheringFiles:
             
             self.ock_files_dir = os.path.join(base_dir, app_name, "OCK_Files")
         else:
+            # 开发环境：保持在项目目录
             self.ock_files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "OCK_Files")
+        # =======================
         
         self.download_history_file = os.path.join(self.ock_files_dir, "history.json")
         self.sksp_manifest_file = os.path.join(self.ock_files_dir, "manifest.json")
@@ -57,11 +63,7 @@ class gatheringFiles:
         
     def update_download_database(self, kexts, download_history):
         download_database = download_history.copy()
-        dortania_builds_data = json.loads(
-            json.dumps(
-                self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
-            ).replace("https://github.com", "https://gitapi.simplehac.top/https://github.com")
-        )
+        dortania_builds_data = self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
         seen_repos = set()
 
         def add_product_to_download_database(products):
@@ -385,7 +387,26 @@ class gatheringFiles:
 
     def fetch_remote_sksp_info(self):
         """获取远程 SKSP manifest 信息"""
-        return self.fetcher.fetch_and_parse_content(self.sksp_manifest_url, "json")
+        # 使用 fetcher 获取，它可能已经有处理逻辑
+        # 但如果是 HTTPS 403 问题，可能需要更直接的请求
+        try:
+            return self.fetcher.fetch_and_parse_content(self.sksp_manifest_url, "json")
+        except:
+            # 如果 resource_fetcher 失败，尝试带 header 的直连
+            try:
+                req = urllib.request.Request(
+                    self.sksp_manifest_url, 
+                    headers={'User-Agent': 'Mozilla/5.0 SimpleKaruzi/1.0'}
+                )
+                # 创建不验证 SSL 的上下文
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                
+                with urllib.request.urlopen(req, context=ctx) as response:
+                    return json.loads(response.read().decode())
+            except Exception as e:
+                return None
 
     def check_sksp_status(self):
         """检查 SKSP 状态，返回 (是否存在, 本地版本)"""
@@ -398,7 +419,7 @@ class gatheringFiles:
         """下载并安装 SKSP"""
         remote_info = self.fetch_remote_sksp_info()
         if not remote_info:
-            return False, "无法获取远程 SKSP 信息"
+            return False, "无法获取远程 SKSP 信息 (请检查网络)"
 
         download_url = remote_info.get("download_url")
         sha256 = remote_info.get("sha256")
@@ -413,8 +434,18 @@ class gatheringFiles:
         try:
             if dialog:
                 dialog.update_progress(0, "正在连接...")
-                
-            response = urllib.request.urlopen(download_url)
+            
+            # === 关键修复：创建 SSL 忽略上下文并设置 User-Agent ===
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            
+            req = urllib.request.Request(
+                download_url, 
+                headers={'User-Agent': 'Mozilla/5.0 SimpleKaruzi/1.0'}
+            )
+            
+            response = urllib.request.urlopen(req, context=ctx)
             total_size = int(response.info().get('Content-Length', 0))
             downloaded_size = 0
             chunk_size = 8192
