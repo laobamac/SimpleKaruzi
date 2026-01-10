@@ -653,7 +653,7 @@ kexts = [
         conflict_group_id = "SATA",
         download_info = {
             "id": 927362352,
-            "url": "https://gitapi.simplehac.top/https://gitapi.simplehac.top/https://raw.githubusercontent.com/lzhoang2801/lzhoang2801.github.io/refs/heads/main/public/extra-files/CtlnaAHCIPort-v3.4.1.zip",
+            "url": "https://gitapi.simplehac.top/https://raw.githubusercontent.com/lzhoang2801/lzhoang2801.github.io/refs/heads/main/public/extra-files/CtlnaAHCIPort-v3.4.1.zip",
             "sha256": "c8cf54f8b98995d076f365765025068e3d612f6337e279774203441c06f1a474"
         }
     ),
@@ -665,7 +665,7 @@ kexts = [
         conflict_group_id = "SATA",
         download_info = {
             "id": 239471623,
-            "url": "https://gitapi.simplehac.top/https://gitapi.simplehac.top/https://raw.githubusercontent.com/lzhoang2801/lzhoang2801.github.io/refs/heads/main/public/extra-files/SATA-unsupported-v0.9.2.zip",
+            "url": "https://gitapi.simplehac.top/https://raw.githubusercontent.com/lzhoang2801/lzhoang2801.github.io/refs/heads/main/public/extra-files/SATA-unsupported-v0.9.2.zip",
             "sha256": "942395056afa1e1d0e06fb501ab7c0130bf687d00e08b02c271844769056a57c"
         }
     ),
