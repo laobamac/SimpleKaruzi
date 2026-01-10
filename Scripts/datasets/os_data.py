@@ -1,0 +1,41 @@
+from Scripts.settings import Settings
+
+settings = Settings()
+
+INCLUDE_BETA = settings.get_include_beta_versions()
+
+class macOSVersionInfo:
+    def __init__(self, name, macos_version, release_status = "final"):
+        self.name = name
+        self.darwin_version = (int(macos_version.split(".")[1]) + 4) if "10." in macos_version else (int(macos_version.split(".")[0]) + 9) if macos_version.startswith("1") else (int(macos_version.split(".")[0]) - 1)
+        self.macos_version = macos_version
+        self.release_status = release_status
+
+macos_versions = [
+    macOSVersionInfo("High Sierra", "10.13"),
+    macOSVersionInfo("Mojave", "10.14"),
+    macOSVersionInfo("Catalina", "10.15"),
+    macOSVersionInfo("Big Sur", "11"),
+    macOSVersionInfo("Monterey", "12"),
+    macOSVersionInfo("Ventura", "13"),
+    macOSVersionInfo("Sonoma", "14"),
+    macOSVersionInfo("Sequoia", "15"),
+    macOSVersionInfo("Tahoe", "26")
+]
+
+def get_latest_darwin_version(include_beta=INCLUDE_BETA):
+    for macos_version in macos_versions[::-1]:
+        if include_beta:
+            return "{}.{}.{}".format(macos_version.darwin_version, 99, 99)
+        else:
+            if macos_version.release_status == "final":
+                return "{}.{}.{}".format(macos_version.darwin_version, 99, 99)
+
+def get_lowest_darwin_version():
+    return "{}.{}.{}".format(macos_versions[0].darwin_version, 0, 0)
+
+def get_macos_name_by_darwin(darwin_version):
+    for data in macos_versions:
+        if data.darwin_version == int(darwin_version[:2]):
+            return "macOS {} {}{}".format(data.name, data.macos_version, "" if data.release_status == "final" else " (Beta)")
+    return None
