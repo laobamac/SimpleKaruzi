@@ -12,7 +12,7 @@ import sys
 import json
 import time
 import urllib.request
-import ssl  # 新增：用于处理 SSL 证书
+import ssl
 
 os_name = platform.system()
 
@@ -24,14 +24,13 @@ class gatheringFiles:
         self.fetcher = resource_fetcher_instance if resource_fetcher_instance else resource_fetcher.ResourceFetcher()
         self.integrity_checker = integrity_checker_instance if integrity_checker_instance else integrity_checker.IntegrityChecker()
         
-        self.dortania_builds_url = "https://raw.githubusercontent.com/dortania/build-repo/builds/latest.json"
-        self.ocbinarydata_url = "https://github.com/acidanthera/OcBinaryData/archive/refs/heads/master.zip"
-        # SKSP Manifest URL
+        self.dortania_builds_url = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/dortania/build-repo/builds/latest.json"
+        self.ocbinarydata_url = "https://gitapi.simplehac.top/https://github.com/acidanthera/OcBinaryData/archive/refs/heads/master.zip"
         self.sksp_manifest_url = "https://next.oclpapi.simplehac.cn/SKSP/manifest.json"
         
-        self.amd_vanilla_patches_url = "https://raw.githubusercontent.com/AMD-OSX/AMD_Vanilla/beta/patches.plist"
-        self.aquantia_macos_patches_url = "https://raw.githubusercontent.com/CaseySJ/Aquantia-macOS-Patches/refs/heads/main/CaseySJ-Aquantia-Patch-Sets-1-and-2.plist"
-        self.hyper_threading_patches_url = "https://github.com/b00t0x/CpuTopologyRebuild/raw/refs/heads/master/patches_ht.plist"
+        self.amd_vanilla_patches_url = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/AMD-OSX/AMD_Vanilla/beta/patches.plist"
+        self.aquantia_macos_patches_url = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/CaseySJ/Aquantia-macOS-Patches/refs/heads/main/CaseySJ-Aquantia-Patch-Sets-1-and-2.plist"
+        self.hyper_threading_patches_url = "https://gitapi.simplehac.top/https://github.com/b00t0x/CpuTopologyRebuild/raw/refs/heads/master/patches_ht.plist"
         
         self.temporary_dir = self.utils.get_temporary_dir()
         
@@ -59,11 +58,7 @@ class gatheringFiles:
         
     def update_download_database(self, kexts, download_history):
         download_database = download_history.copy()
-        dortania_builds_data = json.loads(
-            json.dumps(
-                self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
-            ).replace("https://github.com", "https://gitapi.simplehac.top/https://github.com")
-        )
+        dortania_builds_data = self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
         seen_repos = set()
 
         def add_product_to_download_database(products):
@@ -324,59 +319,35 @@ class gatheringFiles:
 
         self.utils.log_message("[收集文件] 正在获取 Hardware Sniffer...", level="INFO")
 
-        PRODUCT_NAME = "Hardware-Sniffer-CLI.exe"
-        REPO_OWNER = "lzhoang2801"
-        REPO_NAME = "Hardware-Sniffer"
+        target_file = "Hardware-Sniffer-CLI.exe"
+        possible_paths = []
 
-        destination_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), PRODUCT_NAME)
-        
-        latest_release = self.github.get_latest_release(REPO_OWNER, REPO_NAME) or {}
-        
-        product_id = None
-        product_download_url = None
-        sha256_hash = None
+        # 1. 优先检查开发环境路径 / 内部打包路径 (Scripts 文件夹下)
+        # 获取当前 gathering_files.py 所在的目录
+        current_script_dir = os.path.dirname(os.path.realpath(__file__))
+        possible_paths.append(os.path.join(current_script_dir, target_file))
 
-        asset_name = PRODUCT_NAME.split('.')[0]
-        for asset in latest_release.get("assets", []):
-            if asset.get("product_name") == asset_name:
-                product_id = asset.get("id")
-                product_download_url = asset.get("url")
-                sha256_hash = asset.get("sha256")
+        # 2. 检查打包后的外部路径 (如果用户将 exe 放在了主程序旁边)
+        if getattr(sys, 'frozen', False):
+            # sys.executable 是主程序的路径
+            exe_dir = os.path.dirname(sys.executable)
+            possible_paths.append(os.path.join(exe_dir, target_file))
+            possible_paths.append(os.path.join(exe_dir, "Scripts", target_file))
+
+        local_sniffer_path = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                local_sniffer_path = path
                 break
-
-        if not all([product_id, product_download_url, sha256_hash]):
-            show_info("未找到发布信息", "无法找到 {} 的发布信息。请稍后再试。".format(PRODUCT_NAME))
-            raise Exception("无法找到 {} 的发布信息。".format(PRODUCT_NAME))
-
-        download_history = self.utils.read_file(self.download_history_file)
-        if not isinstance(download_history, list):
-            download_history = []
-
-        product_history_index = self.get_product_index(download_history, PRODUCT_NAME)
         
-        if product_history_index is not None:
-            history_item = download_history[product_history_index]
-            is_latest_id = (product_id == history_item.get("id"))
-            
-            file_is_valid = False
-            if os.path.exists(destination_path):
-                local_hash = self.integrity_checker.get_sha256(destination_path)
-                file_is_valid = (sha256_hash == local_hash)
+        if not local_sniffer_path:
+            error_msg = "未找到 Hardware Sniffer。\n请确保 '{}' 存在于 Scripts 文件夹或程序根目录下。".format(target_file)
+            self.utils.log_message("[收集文件] 错误: {}".format(error_msg), level="ERROR")
+            show_info("文件丢失", error_msg)
+            raise FileNotFoundError(error_msg)
 
-            if is_latest_id and file_is_valid:
-                self.utils.log_message("[收集文件] {} 的最新版本已下载。".format(PRODUCT_NAME), level="INFO")
-                return destination_path
-
-        self.utils.log_message("[收集文件] {} {}...".format("正在更新" if product_history_index is not None else "请稍候，正在下载", PRODUCT_NAME), level="INFO")
-        
-        if not self.fetcher.download_and_save_file(product_download_url, destination_path, sha256_hash):
-            manual_download_url = "https://github.com/{}/{}/releases/latest".format(REPO_OWNER, REPO_NAME)
-            show_info("下载失败", "请前往 {} 手动下载 {}。".format(manual_download_url, PRODUCT_NAME))
-            raise Exception("下载 {} 失败。".format(PRODUCT_NAME))
-
-        self._update_download_history(download_history, PRODUCT_NAME, product_id, product_download_url, sha256_hash)
-        
-        return destination_path
+        self.utils.log_message("[收集文件] 使用本地 Hardware Sniffer: {}".format(local_sniffer_path), level="INFO")
+        return local_sniffer_path
 
     # === SKSP 功能 ===
     def get_local_sksp_info(self):
@@ -442,6 +413,10 @@ class gatheringFiles:
             
             response = urllib.request.urlopen(req, context=ctx)
             total_size = int(response.info().get('Content-Length', 0))
+            
+            if total_size > 0 and total_size < 1024:
+                return False, "下载链接返回的文件过小，可能是错误页面。"
+            
             downloaded_size = 0
             chunk_size = 8192
             start_time = time.time()
@@ -461,7 +436,6 @@ class gatheringFiles:
                     downloaded_size += len(chunk)
                     
                     if dialog:
-                        # 计算进度和速度
                         progress = int(downloaded_size * 100 / total_size) if total_size > 0 else 0
                         elapsed = time.time() - start_time
                         speed = downloaded_size / (elapsed if elapsed > 0 else 1) / 1024 / 1024 # MB/s
@@ -471,8 +445,10 @@ class gatheringFiles:
             if dialog: dialog.update_progress(95, "正在校验...")
             if sha256:
                 local_sha = self.integrity_checker.get_sha256(temp_zip)
-                if local_sha != sha256:
-                    return False, "文件校验失败"
+                if local_sha and local_sha.lower() != sha256.lower():
+                    try: os.remove(temp_zip) 
+                    except: pass
+                    return False, "文件校验失败\n期望: {}...\n实际: {}...".format(sha256[:10], local_sha[:10])
             
             # 解压
             if dialog: dialog.update_progress(98, "正在解压...")
