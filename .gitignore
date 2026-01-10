@@ -11,6 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+Dist/
 downloads/
 eggs/
 .eggs/
@@ -161,3 +162,6 @@ cython_debug/
 
 *.DS_Store
 OCK_Files
+create_sksp.py
+settings.json
+config/

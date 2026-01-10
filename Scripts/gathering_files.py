@@ -33,9 +33,7 @@ class gatheringFiles:
         
         self.temporary_dir = self.utils.get_temporary_dir()
         
-        # === 持久化存储路径设置 ===
         if getattr(sys, 'frozen', False):
-            # 打包环境：使用系统用户数据目录
             app_name = "SimpleKaruzi"
             if platform.system() == "Windows":
                 base_dir = os.environ.get("APPDATA", os.path.expanduser("~"))
@@ -46,9 +44,7 @@ class gatheringFiles:
             
             self.ock_files_dir = os.path.join(base_dir, app_name, "OCK_Files")
         else:
-            # 开发环境：保持在项目目录
             self.ock_files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "OCK_Files")
-        # =======================
         
         self.download_history_file = os.path.join(self.ock_files_dir, "history.json")
         self.sksp_manifest_file = os.path.join(self.ock_files_dir, "manifest.json")
@@ -61,7 +57,11 @@ class gatheringFiles:
         
     def update_download_database(self, kexts, download_history):
         download_database = download_history.copy()
-        dortania_builds_data = self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
+        dortania_builds_data = json.loads(
+            json.dumps(
+                self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
+            ).replace("https://github.com", "https://gitapi.simplehac.top/https://github.com")
+        )
         seen_repos = set()
 
         def add_product_to_download_database(products):
