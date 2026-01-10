@@ -4,8 +4,8 @@ from typing import Optional, Dict, List, Any
 
 @dataclass
 class HardwareReportState:
-    report_path: str = "Not selected"
-    acpi_dir: str = "Not selected"
+    report_path: str = "未选择"
+    acpi_dir: str = "未选择"
     hardware_report: Optional[Dict[str, Any]] = None
     compatibility_error: Optional[str] = None
     customized_hardware: Optional[Dict[str, Any]] = None
@@ -17,7 +17,7 @@ class HardwareReportState:
 @dataclass
 class macOSVersionState:
     suggested_version: Optional[str] = None
-    selected_version_name: str = "Not selected"
+    selected_version_name: str = "未选择"
     darwin_version: str = ""
     native_version: Optional[tuple] = None
     ocl_patched_version: Optional[tuple] = None
@@ -26,7 +26,7 @@ class macOSVersionState:
 
 @dataclass
 class SMBIOSState:
-    model_name: str = "Not selected"
+    model_name: str = "未选择"
 
 
 @dataclass

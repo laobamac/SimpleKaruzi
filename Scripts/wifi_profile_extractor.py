@@ -29,14 +29,14 @@ class WifiProfileExtractor:
 
     def validate_wifi_password(self, authentication_type=None, password=None):
         if password is None:
-            self.utils.log_message("[WIFI PROFILE EXTRACTOR] Password is not found", level="INFO")
+            self.utils.log_message("[WiFi 配置文件提取器] 未找到密码", level="INFO")
             return None
 
         if authentication_type is None:
-            self.utils.log_message("[WIFI PROFILE EXTRACTOR] Authentication type is not found", level="INFO")
+            self.utils.log_message("[WiFi 配置文件提取器] 未找到认证类型", level="INFO")
             return password
 
-        self.utils.log_message("[WIFI PROFILE EXTRACTOR] Validating password for \"{}\" with {} authentication type".format(password, authentication_type), level="INFO")
+        self.utils.log_message("[WiFi 配置文件提取器] 正在验证 \"{}\" 的密码，认证类型为 {}".format(password, authentication_type), level="INFO")
 
         if authentication_type == "open":
             return ""
@@ -124,22 +124,22 @@ class WifiProfileExtractor:
             ssid = ssid_list[processed_count]
             
             try:
-                self.utils.log_message("[WIFI PROFILE EXTRACTOR] Retrieving password for \"{}\" ({} of {})".format(ssid, processed_count + 1, len(ssid_list)), level="INFO", to_build_log=True)
+                self.utils.log_message("[WiFi 配置文件提取器] 正在检索 \"{}\" 的密码 (第 {} 个，共 {})".format(ssid, processed_count + 1, len(ssid_list)), level="INFO", to_build_log=True)
                 password = get_password_func(ssid)
                 if password is not None:
                     if (ssid, password) not in networks:
                         consecutive_failures = 0
                         networks.append((ssid, password))
-                        self.utils.log_message("[WIFI PROFILE EXTRACTOR] Successfully retrieved password for \"{}\"".format(ssid), level="INFO", to_build_log=True)
+                        self.utils.log_message("[WiFi 配置文件提取器] 成功检索到 \"{}\" 的密码".format(ssid), level="INFO", to_build_log=True)
                         
                         if len(networks) == max_networks:
                             break
                 else:
-                    self.utils.log_message("[WIFI PROFILE EXTRACTOR] Could not retrieve password for \"{}\"".format(ssid), level="INFO", to_build_log=True)
+                    self.utils.log_message("[WiFi 配置文件提取器] 无法检索 \"{}\" 的密码".format(ssid), level="INFO", to_build_log=True)
                     consecutive_failures += 1 if os_name == "Darwin" else 0
 
                     if consecutive_failures >= max_consecutive_failures:
-                        result = show_confirmation("WiFi Profile Extractor", "Unable to retrieve passwords. Continue trying?")
+                        result = show_confirmation("WiFi 配置文件提取器", "无法检索密码。是否继续尝试？")
                         
                         if not result:
                             break
@@ -147,10 +147,10 @@ class WifiProfileExtractor:
                         consecutive_failures = 0
             except Exception as e:
                 consecutive_failures += 1 if os_name == "Darwin" else 0
-                self.utils.log_message("[WIFI PROFILE EXTRACTOR] Error processing network \"{}\": {}".format(ssid, str(e)), level="ERROR", to_build_log=True)
+                self.utils.log_message("[WiFi 配置文件提取器] 处理网络 \"{}\" 时出错: {}".format(ssid, str(e)), level="ERROR", to_build_log=True)
 
                 if consecutive_failures >= max_consecutive_failures:
-                    result = show_confirmation("WiFi Profile Extractor", "Unable to retrieve passwords. Continue trying?")
+                    result = show_confirmation("WiFi 配置文件提取器", "无法检索密码。是否继续尝试？")
                         
                     if not result:
                         break
@@ -161,7 +161,7 @@ class WifiProfileExtractor:
             
             if processed_count >= max_networks and len(networks) < max_networks and processed_count < len(ssid_list):
 
-                result = show_confirmation("WiFi Profile Extractor", "Only retrieved {}/{} networks. Try more to reach your target?".format(len(networks), max_networks))
+                result = show_confirmation("WiFi 配置文件提取器", "仅检索到 {}/{} 个网络。是否尝试更多以达到目标数量？".format(len(networks), max_networks))
                         
                 if not result:
                     break
@@ -185,10 +185,10 @@ class WifiProfileExtractor:
         
         if self.utils.gui_handler:
             content = (
-                "To retrieve WiFi passwords from the Keychain, macOS will prompt<br>"
-                "you for administrator credentials for each WiFi network."
+                "为了从钥匙串中检索 WiFi 密码，macOS 将提示您<br>"
+                "为每个 WiFi 网络输入管理员凭据。"
             )
-            show_info("Administrator Authentication Required", content)
+            show_info("需要管理员验证", content)
         
         return self.process_networks(ssid_list, max_networks, self.get_wifi_password_macos)
 
@@ -216,7 +216,7 @@ class WifiProfileExtractor:
 
         max_networks = len(ssid_list)
     
-        self.utils.log_message("[WIFI PROFILE EXTRACTOR] Retrieving passwords for {} network(s)".format(len(ssid_list)), level="INFO", to_build_log=True)
+        self.utils.log_message("[WiFi 配置文件提取器] 正在检索 {} 个网络的密码".format(len(ssid_list)), level="INFO", to_build_log=True)
         
         return self.process_networks(ssid_list, max_networks, self.get_wifi_password_windows)
 
@@ -235,7 +235,7 @@ class WifiProfileExtractor:
             
         max_networks = len(ssid_list)
     
-        self.utils.log_message("[WIFI PROFILE EXTRACTOR] Retrieving passwords for {} network(s)".format(len(ssid_list)), level="INFO", to_build_log=True)
+        self.utils.log_message("[WiFi 配置文件提取器] 正在检索 {} 个网络的密码".format(len(ssid_list)), level="INFO", to_build_log=True)
         
         return self.process_networks(ssid_list, max_networks, self.get_wifi_password_linux)
 
@@ -267,20 +267,20 @@ class WifiProfileExtractor:
     
     def get_profiles(self):
         content = (
-            "<b>Note:</b><br>"
+            "<b>注意：</b><br>"
             "<ul>"
-            "<li>When using itlwm kext, WiFi appears as Ethernet in macOS</li>"
-            "<li>You'll need Heliport app to manage WiFi connections in macOS</li>"
-            "<li>This step will enable auto WiFi connections at boot time<br>"
-            "and is useful for users installing macOS via Recovery OS</li>"
+            "<li>当使用 itlwm kext 时，WiFi 在 macOS 中显示为以太网</li>"
+            "<li>您需要 Heliport 应用程序来管理 macOS 中的 WiFi 连接</li>"
+            "<li>此步骤将启用启动时自动连接 WiFi<br>"
+            "对于通过恢复版 OS (Recovery OS) 安装 macOS 的用户非常有用</li>"
             "</ul><br>"
-            "Would you like to scan for WiFi profiles?"
+            "您想要扫描 WiFi 配置文件吗？"
         )
-        if not show_confirmation("WiFi Profile Extractor", content):
+        if not show_confirmation("WiFi 配置文件提取器", content):
             return []
         
         profiles = []
-        self.utils.log_message("[WIFI PROFILE EXTRACTOR] Detecting WiFi Profiles", level="INFO", to_build_log=True)
+        self.utils.log_message("[WiFi 配置文件提取器] 正在检测 WiFi 配置文件", level="INFO", to_build_log=True)
         
         if os_name == "Windows":
             profiles = self.get_preferred_networks_windows()
@@ -291,17 +291,17 @@ class WifiProfileExtractor:
 
             if wifi_interfaces:
                 for interface in wifi_interfaces:
-                    self.utils.log_message("[WIFI PROFILE EXTRACTOR] Checking interface: {}".format(interface), level="INFO", to_build_log=True)
+                    self.utils.log_message("[WiFi 配置文件提取器] 正在检查接口: {}".format(interface), level="INFO", to_build_log=True)
                     interface_profiles = self.get_preferred_networks_macos(interface)
                     if interface_profiles:
                         profiles = interface_profiles
                         break
             else:
-                self.utils.log_message("[WIFI PROFILE EXTRACTOR] No WiFi interfaces detected.", level="INFO", to_build_log=True)
+                self.utils.log_message("[WiFi 配置文件提取器] 未检测到 WiFi 接口。", level="INFO", to_build_log=True)
 
         if not profiles:
-            self.utils.log_message("[WIFI PROFILE EXTRACTOR] No WiFi profiles with saved passwords were found.", level="INFO", to_build_log=True)
+            self.utils.log_message("[WiFi 配置文件提取器] 未找到带有保存密码的 WiFi 配置文件。", level="INFO", to_build_log=True)
         
-        self.utils.log_message("[WIFI PROFILE EXTRACTOR] Successfully applied {} WiFi profiles".format(len(profiles)), level="INFO", to_build_log=True)
+        self.utils.log_message("[WiFi 配置文件提取器] 成功应用了 {} 个 WiFi 配置文件".format(len(profiles)), level="INFO", to_build_log=True)
 
         return profiles

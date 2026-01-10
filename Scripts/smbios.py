@@ -31,8 +31,8 @@ class SMBIOS:
         elif os_name == "Darwin":
             macserial_binary = ["macserial"]
         else:
-            self.utils.log_message("[SMBIOS] Unknown OS for macserial", level="ERROR")
-            raise Exception("Unknown OS for macserial")
+            self.utils.log_message("[SMBIOS] 未知的操作系统，无法确定 macserial", level="ERROR")
+            raise Exception("未知的操作系统，无法确定 macserial")
 
         for binary in macserial_binary:
             macserial_path = os.path.join(self.script_dir, binary)
@@ -40,9 +40,10 @@ class SMBIOS:
                 return macserial_path
 
         if retry_count >= max_retries:
-            self.utils.log_message("[SMBIOS] Failed to find macserial after {} attempts".format(max_retries), level="ERROR")
-            raise Exception("Failed to find macserial after {} attempts".format(max_retries))
+            self.utils.log_message("[SMBIOS] 尝试 {} 次后仍未找到 macserial".format(max_retries), level="ERROR")
+            raise Exception("尝试 {} 次后仍未找到 macserial".format(max_retries))
         
+        # 尝试重新下载 OpenCorePkg 以获取 macserial
         download_history = self.utils.read_file(self.g.download_history_file)
 
         if download_history:
@@ -81,7 +82,7 @@ class SMBIOS:
             "SystemUUID": str(uuid.uuid4()).upper(),
         }
 
-        self.utils.log_message("[SMBIOS] Generated SMBIOS info: MLB: {}..., ROM: {}..., SystemProductName: {}, SystemSerialNumber: {}..., SystemUUID: {}...".format(
+        self.utils.log_message("[SMBIOS] 已生成 SMBIOS 信息: MLB: {}..., ROM: {}..., SystemProductName: {}, SystemSerialNumber: {}..., SystemUUID: {}...".format(
             smbios_info["MLB"][:5],
             smbios_info["ROM"][:5],
             smbios_info["SystemProductName"],
@@ -173,7 +174,7 @@ class SMBIOS:
         elif "Ice Lake" in codename:
             smbios_model = "MacBookAir9,1"
 
-        self.utils.log_message("[SMBIOS] Suggested SMBIOS model: {}".format(smbios_model), level="INFO")
+        self.utils.log_message("[SMBIOS] 建议的 SMBIOS 机型: {}".format(smbios_model), level="INFO")
         return smbios_model
 
     def customize_smbios_model(self, hardware_report, selected_smbios_model, macos_version, parent=None):
@@ -210,8 +211,8 @@ class SMBIOS:
                 'is_compatible': is_compatible
             })
             
-        content = "Lines in gray indicate mac models that are not officially supported by {}.".format(macos_name)
+        content = "灰色行表示不被 {} 官方支持的 Mac 机型。".format(macos_name)
         
-        result = show_smbios_selection_dialog("Customize SMBIOS Model", content, items, selected_smbios_model, default_smbios_model)
+        result = show_smbios_selection_dialog("自定义 SMBIOS 机型", content, items, selected_smbios_model, default_smbios_model)
         
         return result if result else selected_smbios_model

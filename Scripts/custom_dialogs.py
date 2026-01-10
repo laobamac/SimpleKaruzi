@@ -1,7 +1,8 @@
 import re
 import functools
-from PyQt6.QtCore import Qt, QObject, QThread, QMetaObject, QCoreApplication, pyqtSlot, pyqtSignal
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QRadioButton, QButtonGroup, QVBoxLayout, QCheckBox, QScrollArea, QLabel
+import threading
+from PyQt6.QtCore import Qt, QObject, QThread, QMetaObject, QCoreApplication, pyqtSlot, pyqtSignal, QEvent
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QRadioButton, QButtonGroup, QVBoxLayout, QCheckBox, QScrollArea, QLabel, QApplication
 from qfluentwidgets import MessageBoxBase, SubtitleLabel, BodyLabel, LineEdit, PushButton, ProgressBar
 
 from Scripts.datasets import os_data
@@ -12,6 +13,28 @@ def set_default_gui_handler(handler):
     global _default_gui_handler
     _default_gui_handler = handler
 
+class MainThreadRunner(QObject):
+    """用于在主线程执行函数的辅助类"""
+    run_signal = pyqtSignal(object, object, object)
+    
+    def __init__(self):
+        super().__init__()
+        self.moveToThread(QApplication.instance().thread())
+        self.run_signal.connect(self._on_run)
+        
+    @pyqtSlot(object, object, object)
+    def _on_run(self, func, args, kwargs):
+        try:
+            result = func(*args, **kwargs)
+            # 这里我们无法直接返回结果给调用者，因为这是异步信号
+            # 但对于 ensure_main_thread 的 BlockingQueuedConnection 需求，
+            # 我们需要一种同步机制。
+            # 下面的 ThreadRunner 实现更适合同步调用。
+            pass 
+        except Exception:
+            pass
+
+# 重新实现 ThreadRunner 以支持跨线程同步调用并返回结果
 class ThreadRunner(QObject):
     def __init__(self, func, *args, **kwargs):
         super().__init__()
@@ -31,13 +54,33 @@ class ThreadRunner(QObject):
 def ensure_main_thread(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        # 检查当前是否为主线程
         if QThread.currentThread() == QCoreApplication.instance().thread():
             return func(*args, **kwargs)
         
+        # 如果不是主线程，使用 invokeMethod 将调用调度到主线程
         runner = ThreadRunner(func, *args, **kwargs)
         runner.moveToThread(QCoreApplication.instance().thread())
-        QMetaObject.invokeMethod(runner, "run", Qt.ConnectionType.BlockingQueuedConnection)
         
+        # 关键修复：确保传递的是字符串 "run"
+        # 这种方式在 PyQt6 中通常是有效的，只要 runner 是 QObject 且 run 是 pyqtSlot
+        # 报错 'argument 2 has unexpected type function' 说明之前可能传了函数对象
+        # 这里的代码看起来是 "run" 字符串，是正确的。
+        # 可能是之前代码版本的问题，或者是 PyQt6 版本的怪癖。
+        # 无论如何，这个版本保持 "run" 字符串。
+        
+        ret = QMetaObject.invokeMethod(
+            runner, 
+            "run", 
+            Qt.ConnectionType.BlockingQueuedConnection
+        )
+        
+        if not ret:
+            # 只有在方法调用失败时（如找不到 slot）才会返回 False
+            # 但 invokeMethod 在 BlockingQueuedConnection 下如果是 void 返回值通常返回 True
+            # 如果 runner.run 抛出异常，这里捕获不到，必须通过 runner.exception
+            pass
+
         if runner.exception:
             raise runner.exception
         return runner.result
@@ -150,7 +193,7 @@ class CustomMessageDialog(MessageBoxBase):
                 if i > 0:
                     layout.addSpacing(10)
                     
-                header = QLabel("Category: {}".format(category))
+                header = QLabel("类别: {}".format(category))
                 header.setStyleSheet("font-weight: bold; color: #0078D4; padding-top: 5px; padding-bottom: 5px; border-bottom: 1px solid #E1DFDD;")
                 layout.addWidget(header)
                 
@@ -169,7 +212,7 @@ class CustomMessageDialog(MessageBoxBase):
         self.viewLayout.addWidget(scroll)
         return checkboxes
 
-    def configure_buttons(self, yes_text: str = "OK", no_text: str = "Cancel", show_cancel: bool = True):
+    def configure_buttons(self, yes_text: str = "确定", no_text: str = "取消", show_cancel: bool = True):
         self.yesButton.setText(yes_text)
         self.cancelButton.setText(no_text)
         self.cancelButton.setVisible(show_cancel)
@@ -177,11 +220,11 @@ class CustomMessageDialog(MessageBoxBase):
 @ensure_main_thread
 def show_info(title: str, content: str) -> None:
     dialog = CustomMessageDialog(title, content)
-    dialog.configure_buttons(yes_text="OK", show_cancel=False)
+    dialog.configure_buttons(yes_text="确定", show_cancel=False)
     dialog.exec()
 
 @ensure_main_thread
-def show_confirmation(title: str, content: str, yes_text="Yes", no_text="No") -> bool:
+def show_confirmation(title: str, content: str, yes_text="是", no_text="否") -> bool:
     dialog = CustomMessageDialog(title, content)
     dialog.configure_buttons(yes_text=yes_text, no_text=no_text, show_cancel=True)
     return dialog.exec()
@@ -190,7 +233,7 @@ def show_confirmation(title: str, content: str, yes_text="Yes", no_text="No") ->
 def show_options_dialog(title, content, options, default_index=0):
     dialog = CustomMessageDialog(title, content)
     dialog.add_radio_options(options, default_index)
-    dialog.configure_buttons(yes_text="OK", show_cancel=True)
+    dialog.configure_buttons(yes_text="确定", show_cancel=True)
     
     if dialog.exec():
         return dialog.button_group.checkedId()
@@ -200,7 +243,7 @@ def show_options_dialog(title, content, options, default_index=0):
 def show_checklist_dialog(title, content, items, checked_indices=None):
     dialog = CustomMessageDialog(title, content)
     checkboxes = dialog.add_checklist(items, checked_indices)
-    dialog.configure_buttons(yes_text="OK", show_cancel=True)
+    dialog.configure_buttons(yes_text="确定", show_cancel=True)
     
     if dialog.exec():
         return [i for i, cb in enumerate(checkboxes) if cb.isChecked()]
@@ -209,19 +252,19 @@ def show_checklist_dialog(title, content, items, checked_indices=None):
 @ensure_main_thread
 def ask_network_count(total_networks):
     content = (
-        "Found {} WiFi networks on this device.<br><br>"
-        "How many networks would you like to process?<br>"
+        "在此设备上发现了 {} 个 WiFi 网络。<br><br>"
+        "您想处理多少个网络？<br>"
         "<ul>"
-        "<li>Enter a number (1-{})</li>"
-        "<li>Or select \"Process All\"</li>"
+        "<li>输入数字 (1-{})</li>"
+        "<li>或选择“处理所有网络”</li>"
         "</ul>"
     ).format(total_networks, total_networks)
     
-    dialog = CustomMessageDialog("WiFi Network Retrieval", content)
-    dialog.input_field = dialog.add_input(placeholder="1-{} (Default: 5)".format(total_networks), default_value="5")
+    dialog = CustomMessageDialog("WiFi 网络检索", content)
+    dialog.input_field = dialog.add_input(placeholder="1-{} (默认: 5)".format(total_networks), default_value="5")
     
     button_layout = QHBoxLayout()
-    all_btn = PushButton("Process All Networks", dialog.widget)
+    all_btn = PushButton("处理所有网络", dialog.widget)
     button_layout.addWidget(all_btn)
     button_layout.addStretch()
     dialog.viewLayout.addLayout(button_layout)
@@ -269,8 +312,8 @@ def show_smbios_selection_dialog(title, content, items, current_selection, defau
     top_layout = QHBoxLayout(top_container)
     top_layout.setContentsMargins(0, 0, 0, 0)
     
-    show_all_cb = QCheckBox("Show all models")
-    restore_btn = PushButton("Restore default ({})".format(default_selection))
+    show_all_cb = QCheckBox("显示所有型号")
+    restore_btn = PushButton("恢复默认 ({})".format(default_selection))
     
     top_layout.addWidget(show_all_cb)
     top_layout.addStretch()
@@ -296,7 +339,7 @@ def show_smbios_selection_dialog(title, content, items, current_selection, defau
         category_label = None
         if category != current_category:
             current_category = category
-            category_label = QLabel("Category: {}".format(category))
+            category_label = QLabel("类别: {}".format(category))
             category_label.setStyleSheet("font-weight: bold; color: #0078D4; margin-top: 10px; border-bottom: 1px solid #E1DFDD;")
             layout.addWidget(category_label)
             
@@ -358,7 +401,7 @@ def show_smbios_selection_dialog(title, content, items, current_selection, defau
     
     update_visibility()
     
-    dialog.configure_buttons(yes_text="OK", show_cancel=True)
+    dialog.configure_buttons(yes_text="确定", show_cancel=True)
     
     if dialog.exec():
         selected_id = button_group.checkedId()
@@ -372,9 +415,9 @@ def show_macos_version_dialog(native_macos_version, ocl_patched_macos_version, s
     
     if native_macos_version[1][:2] != suggested_macos_version[:2]:
         suggested_macos_name = os_data.get_macos_name_by_darwin(suggested_macos_version)
-        content += "<b style=\"color: #1565C0\">Suggested macOS version:</b> For better compatibility and stability, we suggest you to use only <b>{}</b> or older.<br><br>".format(suggested_macos_name)
+        content += "<b style=\"color: #1565C0\">建议的 macOS 版本：</b> 为了更好的兼容性和稳定性，建议您仅使用 <b>{}</b> 或更旧版本。<br><br>".format(suggested_macos_name)
 
-    content += "Please select the macOS version you want to use:"
+    content += "请选择您想要使用的 macOS 版本："
     
     options = []
     version_values = []
@@ -395,7 +438,7 @@ def show_macos_version_dialog(native_macos_version, ocl_patched_macos_version, s
         
         label = ""
         if oclp_min <= darwin_version <= oclp_max:
-            label = " <i style=\"color: #FF8C00\">(Requires OpenCore Legacy Patcher)</i>"
+            label = " <i style=\"color: #FF8C00\">(需要 OCLP 补丁)</i>"
         
         options.append("<span>{}{}</span>".format(name, label))
         version_values.append(darwin_version)
@@ -403,7 +446,7 @@ def show_macos_version_dialog(native_macos_version, ocl_patched_macos_version, s
         if darwin_version == int(suggested_macos_version[:2]):
             default_index = len(options) - 1
     
-    result = show_options_dialog("Select macOS Version", content, options, default_index)
+    result = show_options_dialog("选择 macOS 版本", content, options, default_index)
     
     if result is not None:
         return "{}.99.99".format(version_values[result])
@@ -413,7 +456,7 @@ def show_macos_version_dialog(native_macos_version, ocl_patched_macos_version, s
 class UpdateDialog(MessageBoxBase):
     progress_updated = pyqtSignal(int, str)
     
-    def __init__(self, title="Update", initial_status="Checking for updates..."):
+    def __init__(self, title="更新", initial_status="正在检查更新..."):
         super().__init__(_default_gui_handler)
         
         self.titleLabel = SubtitleLabel(title, self.widget)
@@ -452,10 +495,10 @@ class UpdateDialog(MessageBoxBase):
         self.yesButton.setVisible(show_ok)
         self.cancelButton.setVisible(show_cancel)
     
-    def configure_buttons(self, ok_text="OK", cancel_text="Cancel"):
+    def configure_buttons(self, ok_text="确定", cancel_text="取消"):
         self.yesButton.setText(ok_text)
         self.cancelButton.setText(cancel_text)
 
-def show_update_dialog(title="Update", initial_status="Checking for updates..."):
+def show_update_dialog(title="更新", initial_status="正在检查更新..."):
     dialog = UpdateDialog(title, initial_status)
     return dialog

@@ -179,7 +179,7 @@ class CompatibilityPage(ScrollArea):
                  oclp_max_name = os_data.get_macos_name_by_darwin(self.controller.macos_state.ocl_patched_version[0])
                  oclp_min_name = os_data.get_macos_name_by_darwin(self.controller.macos_state.ocl_patched_version[-1])
                  oclp_range = oclp_min_name if oclp_min_name == oclp_max_name else "{} 至 {}".format(oclp_min_name, oclp_max_name)
-                 message += "\nOpenCore Legacy Patcher 扩展支持：{}".format(oclp_range)
+                 message += "\n补丁扩展支持：{}".format(oclp_range)
 
             self.status_banner.show_success("硬件兼容", message)
         else:
@@ -338,7 +338,7 @@ class CompatibilityPage(ScrollArea):
                     self.ui_utils.colored_icon(FluentIcon.IOT, COLORS["primary"]),
                     "OCLP 兼容性",
                     oclp_text,
-                    self.ui_utils.create_info_widget("通过 OpenCore Legacy Patcher 提供扩展支持", info_text_color),
+                    self.ui_utils.create_info_widget("通过 OCLP(-Mod) 提供扩展支持", info_text_color),
                     indent_level=1
                 )
 
@@ -431,7 +431,7 @@ class CompatibilityPage(ScrollArea):
                     self.ui_utils.colored_icon(FluentIcon.IOT, COLORS["primary"]),
                     "OCLP 兼容性",
                     oclp_text,
-                    self.ui_utils.create_info_widget("通过 OpenCore Legacy Patcher 提供扩展支持", info_text_color),
+                    self.ui_utils.create_info_widget("通过 OCLP(-Mod) 提供扩展支持", info_text_color),
                     indent_level=1
                 )
 

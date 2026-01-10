@@ -9,10 +9,10 @@ class HardwareCustomizer:
 
     def show_macos_compatibility(self, device_compatibility):
         if not device_compatibility:
-            return "<span style='color:gray'>Unchecked</span>"
+            return "<span style='color:gray'>未检查</span>"
         
         if not device_compatibility[0]:
-            return "<span style='color:red'>Unsupported</span>"
+            return "<span style='color:red'>不支持</span>"
         
         max_compatibility = self.utils.parse_darwin_version(device_compatibility[0])[0]
         min_compatibility = self.utils.parse_darwin_version(device_compatibility[-1])[0]
@@ -20,17 +20,17 @@ class HardwareCustomizer:
         min_version = self.utils.parse_darwin_version(os_data.get_lowest_darwin_version())[0]
 
         if max_compatibility == min_version:
-            return "<span style='color:blue'>Maximum support up to {}</span>".format(
+            return "<span style='color:blue'>最高支持到 {}</span>".format(
                 os_data.get_macos_name_by_darwin(device_compatibility[-1])
             )
 
         if min_version < min_compatibility or max_compatibility < max_version:
-            return "<span style='color:green'>{} to {}</span>".format(
+            return "<span style='color:green'>{} 至 {}</span>".format(
                 os_data.get_macos_name_by_darwin(device_compatibility[-1]), 
                 os_data.get_macos_name_by_darwin(device_compatibility[0])
             )
         
-        return "<span style='color:blue'>Up to {}</span>".format(
+        return "<span style='color:blue'>支持到 {}</span>".format(
             os_data.get_macos_name_by_darwin(device_compatibility[0])
         )
 
@@ -42,7 +42,7 @@ class HardwareCustomizer:
         self.selected_devices = {}
         needs_oclp = False
 
-        self.utils.log_message("[HARDWARE CUSTOMIZATION] Starting hardware customization", level="INFO")
+        self.utils.log_message("[硬件定制] 开始硬件定制", level="INFO")
 
         for device_type, devices in self.hardware_report.items():
             if not device_type in ("BIOS", "GPU", "Sound", "Biometric", "Network", "Storage Controllers", "Bluetooth", "SD Controller"):
@@ -56,15 +56,15 @@ class HardwareCustomizer:
 
                 if devices.get("Firmware Type") != "UEFI":
                     content = (
-                        "Would you like to build the EFI for UEFI?<br>"
-                        "If yes, please make sure to update your BIOS and enable UEFI Boot Mode in your BIOS settings.<br>"
-                        "You can still proceed with Legacy if you prefer."
+                        "您想要为 UEFI 构建 EFI 吗？<br>"
+                        "如果是，请确保更新您的 BIOS 并在 BIOS 设置中启用 UEFI 启动模式。<br>"
+                        "如果您愿意，仍然可以继续构建 Legacy 版本。"
                     )
-                    if show_confirmation("BIOS Firmware Type is not UEFI", content):
-                        self.utils.log_message("[HARDWARE CUSTOMIZATION] BIOS Firmware Type is not UEFI, building EFI for UEFI", level="INFO")
+                    if show_confirmation("BIOS 固件类型不是 UEFI", content):
+                        self.utils.log_message("[硬件定制] BIOS 固件类型不是 UEFI，正在为 UEFI 构建 EFI", level="INFO")
                         self.customized_hardware[device_type]["Firmware Type"] = "UEFI"
                     else:
-                        self.utils.log_message("[HARDWARE CUSTOMIZATION] BIOS Firmware Type is not UEFI, building EFI for Legacy", level="INFO")
+                        self.utils.log_message("[硬件定制] BIOS 固件类型不是 UEFI，正在为 Legacy 构建 EFI", level="INFO")
                         self.customized_hardware[device_type]["Firmware Type"] = "Legacy"
 
                 continue
@@ -94,12 +94,12 @@ class HardwareCustomizer:
                     self._handle_device_selection(device_type if device_type != "Network" else "WiFi")
         
         if self.selected_devices:
-            content = "The following devices have been selected for your configuration:<br>"
+            content = "已为您的配置选择以下设备：<br>"
             content += "<table width='100%' cellpadding='4'>"
             content += "<tr>"
-            content += "<td><b>Category</b></td>"
-            content += "<td><b>Device Name</b></td>"
-            content += "<td><b>Device ID</b></td>"
+            content += "<td><b>类别</b></td>"
+            content += "<td><b>设备名称</b></td>"
+            content += "<td><b>设备 ID</b></td>"
             content += "</tr>"
 
             for device_type, device_dict in self.selected_devices.items():
@@ -112,8 +112,8 @@ class HardwareCustomizer:
                     content += "</tr>"
             
             content += "</table>"
-            content += "<p><i>Note: Unselected devices in these categories have been disabled.</i></p>"
-            show_info("Hardware Configuration Summary", content)
+            content += "<p><i>注意：这些类别中未选择的设备已被禁用。</i></p>"
+            show_info("硬件配置摘要", content)
 
         return self.customized_hardware, self.disabled_devices, needs_oclp
 
@@ -142,12 +142,12 @@ class HardwareCustomizer:
         devices = self._get_compatible_devices(device_type)
         device_groups = None
 
-        title = "Multiple {} Devices Detected".format(device_type)
+        title = "检测到多个 {} 设备".format(device_type)
         content = []
 
         if len(devices) > 1:       
             if device_type == "WiFi" or device_type == "Bluetooth":
-                content.append("macOS works best with only one {} device enabled.<br>".format(device_type))
+                content.append("macOS 在仅启用一个 {} 设备时工作状态最佳。<br>".format(device_type))
             elif device_type == "GPU":
                 _apu_index = None
                 _navi_22_indices = set()
@@ -178,7 +178,7 @@ class HardwareCustomizer:
                     _other_indices.add(index)
 
                 if _apu_index or _navi_22_indices:
-                    content.append("Multiple active GPUs can cause kext conflicts in macOS.")
+                    content.append("多个活动 GPU 可能会导致 macOS 中的 kext 冲突。")
                 
                 device_groups = []
                 if _apu_index:
@@ -216,11 +216,11 @@ class HardwareCustomizer:
         return compatible_devices
 
     def _select_device(self, device_type, devices, device_groups=None, title=None, content=None):
-        self.utils.log_message("[HARDWARE CUSTOMIZATION] Starting device selection for {}".format(device_type), level="INFO")
+        self.utils.log_message("[硬件定制] 开始为 {} 选择设备".format(device_type), level="INFO")
         if device_groups:
-            content.append("Please select a {} combination configuration:".format(device_type))
+            content.append("请选择一个 {} 组合配置：".format(device_type))
         else:
-            content.append("Please select which {} device you want to use:".format(device_type))
+            content.append("请选择您想要使用的 {} 设备：".format(device_type))
 
         options = []
 
@@ -264,27 +264,27 @@ class HardwareCustomizer:
             for group_devices, group_indices, group_compatibility in valid_combinations:
                 option = "<b>{}</b>".format(" + ".join(group_devices))
                 if group_compatibility:
-                    option += "<br>Compatibility: {}".format(self.show_macos_compatibility(group_compatibility))
+                    option += "<br>兼容性：{}".format(self.show_macos_compatibility(group_compatibility))
                 if len(group_devices) == 1:
                     device_props = devices[group_devices[0]]
                     if device_props.get("OCLP Compatibility"):
-                        option += "<br>OCLP Compatibility: {}".format(self.show_macos_compatibility((device_props.get("OCLP Compatibility")[0], os_data.get_lowest_darwin_version())))
+                        option += "<br>OCLP 兼容性：{}".format(self.show_macos_compatibility((device_props.get("OCLP Compatibility")[0], os_data.get_lowest_darwin_version())))
                 options.append(option)
         else:
             for device_name, device_props in devices.items():
                 compatibility = device_props.get("Compatibility")
                 
                 option = "<b>{}</b>".format(device_name)
-                option += "<br>Device ID: {}".format(device_props.get("Device ID", "Unknown"))
-                option += "<br>Compatibility: {}".format(self.show_macos_compatibility(compatibility))
+                option += "<br>设备 ID：{}".format(device_props.get("Device ID", "Unknown"))
+                option += "<br>兼容性：{}".format(self.show_macos_compatibility(compatibility))
                 
                 if device_props.get("OCLP Compatibility"):
                     oclp_compatibility = device_props.get("OCLP Compatibility")
                     if self.utils.parse_darwin_version(oclp_compatibility[0]) > self.utils.parse_darwin_version(compatibility[0]):
-                        option += "<br>OCLP Compatibility: {}".format(self.show_macos_compatibility((oclp_compatibility[0], os_data.get_lowest_darwin_version())))
+                        option += "<br>OCLP 兼容性：{}".format(self.show_macos_compatibility((oclp_compatibility[0], os_data.get_lowest_darwin_version())))
                 options.append(option)
 
-        self.utils.log_message("[HARDWARE CUSTOMIZATION] Options: {}".format(", ".join(option.split("<br>")[0].replace("<b>", "").replace("</b>", "").strip() for option in options)), level="INFO")
+        self.utils.log_message("[硬件定制] 选项：{}".format(", ".join(option.split("<br>")[0].replace("<b>", "").replace("</b>", "").strip() for option in options)), level="INFO")
             
         while True:
             choice_num = show_options_dialog(title, "<br>".join(content), options, default_index=len(options) - 1)
@@ -301,7 +301,7 @@ class HardwareCustomizer:
                 if device not in selected_devices:
                     self._disable_device(device_type, device, devices[device])
 
-            self.utils.log_message("[HARDWARE CUSTOMIZATION] Selected devices: {}".format(", ".join(selected_devices)), level="INFO")
+            self.utils.log_message("[硬件定制] 已选设备：{}".format(", ".join(selected_devices)), level="INFO")
             return selected_devices
 
     def _disable_device(self, device_type, device_name, device_props):

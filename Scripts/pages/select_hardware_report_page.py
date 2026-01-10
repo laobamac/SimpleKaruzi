@@ -58,7 +58,7 @@ class ReportDetailsGroup(ExpandGroupSettingCard):
         card = self.reportCard if section == "report" else self.acpiCard
         icon_widget = self.reportIcon if section == "report" else self.acpiIcon
         
-        if path and path != "Not selected" and path != "未选择":
+        if path and path != "未选择" and path != "未选择":
             path = os.path.normpath(path)
         
         card.setContent(path)

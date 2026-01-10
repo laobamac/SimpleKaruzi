@@ -77,7 +77,7 @@ class SMBIOSModelCard(SettingCard):
         )
         self.controller = controller
         
-        model_text = self.controller.smbios_state.model_name if self.controller.smbios_state.model_name != "Not selected" else "未配置"
+        model_text = self.controller.smbios_state.model_name if self.controller.smbios_state.model_name != "未选择" else "未配置"
         self.modelLabel = BodyLabel(model_text)
         # 移除强制颜色样式以适配暗夜模式
         self.modelLabel.setStyleSheet("margin-right: 10px;")
@@ -91,7 +91,7 @@ class SMBIOSModelCard(SettingCard):
         self.hBoxLayout.addSpacing(16)
 
     def update_model(self):
-        model_text = self.controller.smbios_state.model_name if self.controller.smbios_state.model_name != "Not selected" else "未配置"
+        model_text = self.controller.smbios_state.model_name if self.controller.smbios_state.model_name != "未选择" else "未配置"
         self.modelLabel.setText(model_text)
 
 class ConfigurationPage(ScrollArea):

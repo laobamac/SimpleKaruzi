@@ -18,7 +18,7 @@ class KextInfo:
 kexts = [
     KextInfo(
         name = "Lilu", 
-        description = "For arbitrary kext, library, and program patching",
+        description = "用于任意的内核扩展、库和程序修补",
         category = "Required",
         required = True,
         github_repo = {
@@ -28,7 +28,7 @@ kexts = [
     ),
     KextInfo(
         name = "VirtualSMC", 
-        description = "Advanced Apple SMC emulator in the kernel",
+        description = "内核中先进的Apple SMC模拟器",
         category = "Required",
         required = True,
         requires_kexts = ["Lilu"],
@@ -39,7 +39,7 @@ kexts = [
     ),
     KextInfo(
         name = "SMCBatteryManager", 
-        description = "Manages, monitors, and reports on battery status",
+        description = "管理、监控和报告电池状态",
         category = "VirtualSMC Plugins",
         requires_kexts = ["Lilu", "VirtualSMC"],
         github_repo = {
@@ -49,7 +49,7 @@ kexts = [
     ),
     KextInfo(
         name = "SMCDellSensors", 
-        description = "Enables fan monitoring and control on Dell computers",
+        description = "在戴尔计算机上启用风扇监控和控制",
         category = "VirtualSMC Plugins",
         requires_kexts = ["Lilu", "VirtualSMC"],
         github_repo = {
@@ -59,7 +59,7 @@ kexts = [
     ),
     KextInfo(
         name = "SMCLightSensor", 
-        description = "Allows system utilize ambient light sensor device",
+        description = "允许系统利用环境光传感器设备",
         category = "VirtualSMC Plugins",
         requires_kexts = ["Lilu", "VirtualSMC"],
         github_repo = {
@@ -69,7 +69,7 @@ kexts = [
     ),
     KextInfo(
         name = "SMCProcessor", 
-        description = "Manages Intel CPU temperature sensors",
+        description = "管理英特尔CPU温度传感器",
         category = "VirtualSMC Plugins",
         requires_kexts = ["Lilu", "VirtualSMC"],
         github_repo = {
@@ -79,7 +79,7 @@ kexts = [
     ),
     KextInfo(
         name = "SMCRadeonSensors", 
-        description = "Provides temperature readings for AMD GPUs",
+        description = "为AMD GPU提供温度读数",
         category = "VirtualSMC Plugins",
         min_darwin_version = "18.0.0",
         requires_kexts = ["Lilu", "VirtualSMC"],
@@ -94,7 +94,7 @@ kexts = [
     ),
     KextInfo(
         name = "SMCSuperIO", 
-        description = "Monitoring hardware sensors and controlling fan speeds",
+        description = "监控硬件传感器和控制风扇速度",
         category = "VirtualSMC Plugins",
         requires_kexts = ["Lilu", "VirtualSMC"],
         github_repo = {
@@ -104,7 +104,7 @@ kexts = [
     ),
     KextInfo(
         name = "NootRX", 
-        description = "The rDNA 2 dGPU support patch kext",
+        description = "支持rDNA 2独立显卡的补丁内核扩展",
         category = "Graphics",
         min_darwin_version = "20.5.0",
         requires_kexts = ["Lilu"],
@@ -120,7 +120,7 @@ kexts = [
     ),
     KextInfo(
         name = "NootedRed", 
-        description = "The AMD Vega iGPU support kext",
+        description = "支持AMD Vega集成显卡的内核扩展",
         category = "Graphics",
         min_darwin_version = "19.0.0",
         requires_kexts = ["Lilu"],
@@ -136,7 +136,7 @@ kexts = [
     ),
     KextInfo(
         name = "WhateverGreen", 
-        description = "Various patches necessary for GPUs are pre-supported",
+        description = "为GPU提供各种必要的预支持补丁",
         category = "Graphics",
         requires_kexts = ["Lilu"],
         conflict_group_id = "GPU",
@@ -147,7 +147,7 @@ kexts = [
     ),
     KextInfo(
         name = "AppleALC", 
-        description = "Native macOS HD audio for not officially supported codecs",
+        description = "为非官方支持的编解码器提供原生macOS高清音频",
         category = "Audio",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -157,7 +157,7 @@ kexts = [
     ),
     KextInfo(
         name = "AirportBrcmFixup", 
-        description = "Patches required for non-native Broadcom Wi-Fi cards",
+        description = "为非原生博通Wi-Fi卡提供必要的补丁",
         category = "Wi-Fi",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -167,7 +167,7 @@ kexts = [
     ),
     KextInfo(
         name = "AirportItlwm", 
-        description = "Intel Wi-Fi drivers support the native macOS Wi-Fi interface",
+        description = "英特尔Wi-Fi驱动程序，支持原生macOS Wi-Fi接口",
         category = "Wi-Fi",
         conflict_group_id = "IntelWiFi",
         github_repo = {
@@ -177,7 +177,7 @@ kexts = [
     ),
     KextInfo(
         name = "corecaptureElCap", 
-        description = "Enable legacy Qualcomm Atheros Wireless cards",
+        description = "启用旧的Qualcomm Atheros无线网卡",
         category = "Wi-Fi",
         min_darwin_version = "18.0.0",
         max_darwin_version = "24.99.99",
@@ -189,7 +189,7 @@ kexts = [
     ),
     KextInfo(
         name = "IO80211ElCap", 
-        description = "Enable legacy Qualcomm Atheros Wireless cards",
+        description = "启用旧的Qualcomm Atheros无线网卡",
         category = "Wi-Fi",
         min_darwin_version = "18.0.0",
         max_darwin_version = "24.99.99",
@@ -201,7 +201,7 @@ kexts = [
     ),
     KextInfo(
         name = "IO80211FamilyLegacy", 
-        description = "Enable legacy Apple Wireless adapters",
+        description = "启用旧的Apple无线适配器",
         category = "Wi-Fi",
         min_darwin_version = "23.0.0",
         requires_kexts = ["AMFIPass", "IOSkywalkFamily"],
@@ -212,7 +212,7 @@ kexts = [
     ),
     KextInfo(
         name = "IOSkywalkFamily", 
-        description = "Enable legacy Apple Wireless adapters",
+        description = "启用旧的Apple无线适配器",
         category = "Wi-Fi",
         min_darwin_version = "23.0.0",
         requires_kexts = ["AMFIPass", "IO80211FamilyLegacy"],
@@ -223,7 +223,7 @@ kexts = [
     ),
     KextInfo(
         name = "itlwm", 
-        description = "Intel Wi-Fi drivers. Spoofs as Ethernet and connects to Wi-Fi via Heliport",
+        description = "英特尔Wi-Fi驱动程序，模拟为以太网并通过Heliport连接Wi-Fi",
         category = "Wi-Fi",
         conflict_group_id = "IntelWiFi",
         github_repo = {
@@ -233,7 +233,7 @@ kexts = [
     ),
     KextInfo(
         name = "Ath3kBT", 
-        description = "Uploads firmware to enable Atheros Bluetooth support",
+        description = "上传固件以启用Atheros蓝牙支持",
         category = "Bluetooth",
         max_darwin_version = "20.99.99",
         requires_kexts = ["Ath3kBTInjector"],
@@ -244,7 +244,7 @@ kexts = [
     ),
     KextInfo(
         name = "Ath3kBTInjector", 
-        description = "Uploads firmware to enable Atheros Bluetooth support",
+        description = "上传固件以启用Atheros蓝牙支持",
         category = "Bluetooth",
         max_darwin_version = "20.99.99",
         requires_kexts = ["Ath3kBT"],
@@ -255,7 +255,7 @@ kexts = [
     ),
     KextInfo(
         name = "BlueToolFixup", 
-        description = "Patches Bluetooth stack to support third-party cards",
+        description = "修补蓝牙堆栈以支持第三方网卡",
         category = "Bluetooth",
         min_darwin_version = "21.0.0",
         requires_kexts = ["Lilu"],
@@ -266,7 +266,7 @@ kexts = [
     ),
     KextInfo(
         name = "BrcmBluetoothInjector", 
-        description = "Enables the Broadcom Bluetooth on/off switch on older versions",
+        description = "在旧版本上启用博通蓝牙开关",
         category = "Bluetooth",
         max_darwin_version = "20.99.99",
         requires_kexts = ["BrcmBluetoothInjector", "BrcmFirmwareData", "BrcmPatchRAM2", "BrcmPatchRAM3"],
@@ -277,7 +277,7 @@ kexts = [
     ),
     KextInfo(
         name = "BrcmFirmwareData", 
-        description = "Applies PatchRAM updates for Broadcom RAMUSB based devices",
+        description = "为基于博通RAMUSB的设备应用PatchRAM更新",
         category = "Bluetooth",
         requires_kexts = ["BlueToolFixup", "BrcmBluetoothInjector", "BrcmPatchRAM2", "BrcmPatchRAM3"],
         github_repo = {
@@ -287,7 +287,7 @@ kexts = [
     ),
     KextInfo(
         name = "BrcmPatchRAM2", 
-        description = "Applies PatchRAM updates for Broadcom RAMUSB based devices",
+        description = "为基于博通RAMUSB的设备应用PatchRAM更新",
         category = "Bluetooth",
         max_darwin_version = "18.99.99",
         requires_kexts = ["BlueToolFixup", "BrcmBluetoothInjector", "BrcmFirmwareData", "BrcmPatchRAM3"],
@@ -298,7 +298,7 @@ kexts = [
     ),
     KextInfo(
         name = "BrcmPatchRAM3", 
-        description = "Applies PatchRAM updates for Broadcom RAMUSB based devices",
+        description = "为基于博通RAMUSB的设备应用PatchRAM更新",
         category = "Bluetooth",
         min_darwin_version = "19.0.0",
         requires_kexts = ["BlueToolFixup", "BrcmBluetoothInjector", "BrcmFirmwareData", "BrcmPatchRAM2"],
@@ -309,7 +309,7 @@ kexts = [
     ),
     KextInfo(
         name = "IntelBluetoothFirmware", 
-        description = "Uploads firmware to enable Intel Bluetooth support",
+        description = "上传固件以启用英特尔蓝牙支持",
         category = "Bluetooth",
         requires_kexts = ["BlueToolFixup", "IntelBTPatcher", "IntelBluetoothInjector"],
         github_repo = {
@@ -319,7 +319,7 @@ kexts = [
     ),
     KextInfo(
         name = "IntelBTPatcher", 
-        description = "Fixes Intel Bluetooth bugs for better connectivity",
+        description = "修复英特尔蓝牙错误以获得更好的连接性",
         category = "Bluetooth",
         requires_kexts = ["Lilu", "BlueToolFixup", "IntelBluetoothFirmware", "IntelBluetoothInjector"],
         github_repo = {
@@ -329,7 +329,7 @@ kexts = [
     ),
     KextInfo(
         name = "IntelBluetoothInjector", 
-        description = "Enables the Intel Bluetooth on/off switch on older versions",
+        description = "在旧版本上启用英特尔蓝牙开关",
         category = "Bluetooth",
         max_darwin_version = "20.99.99",
         requires_kexts = ["BlueToolFixup", "IntelBluetoothFirmware", "IntelBTPatcher"],
@@ -340,7 +340,7 @@ kexts = [
     ),
     KextInfo(
         name = "AppleIGB", 
-        description = "Provides support for Intel's IGB Ethernet controllers",
+        description = "为英特尔的IGB以太网控制器提供支持",
         category = "Ethernet",
         github_repo = {
             "owner": "donatengit",
@@ -353,7 +353,7 @@ kexts = [
     ),
     KextInfo(
         name = "AppleIGC", 
-        description = "Provides support for Intel 2.5G Ethernet(i225/i226)", 
+        description = "为英特尔2.5G以太网(i225/i226)提供支持", 
         category = "Ethernet",
         github_repo = {
             "owner": "SongXiaoXi",
@@ -361,8 +361,17 @@ kexts = [
         }
     ),
     KextInfo(
+        name = "SimpleGBE", 
+        description = "macOS的i210/211以太网驱动程序",
+        category = "Ethernet",
+        github_repo = {
+            "owner": "laobamac",
+            "repo": "SimpleGBE"
+        }
+    ),
+    KextInfo(
         name = "AtherosE2200Ethernet", 
-        description = "Provides support for Atheros E2200 family", 
+        description = "为Atheros E2200系列提供支持", 
         category = "Ethernet",
         github_repo = {
             "owner": "Mieze",
@@ -371,7 +380,7 @@ kexts = [
     ),
     KextInfo(
         name = "CatalinaBCM5701Ethernet", 
-        description = "Provides support for Broadcom BCM57XX Ethernet series",
+        description = "为博通BCM57XX以太网系列提供支持",
         category = "Ethernet",
         min_darwin_version = "20.0.0",
         download_info = {
@@ -381,7 +390,7 @@ kexts = [
     ),
     KextInfo(
         name = "HoRNDIS", 
-        description = "Use the USB tethering mode of the Android phone to access the Internet",
+        description = "使用安卓手机的USB网络共享模式访问互联网",
         category = "Ethernet",
         github_repo = {
             "owner": "TomHeaven",
@@ -394,7 +403,7 @@ kexts = [
     ),
     KextInfo(
         name = "IntelLucy",
-        description = "Provides support for Intel X500 family",
+        description = "为英特尔X500系列提供支持",
         category = "Ethernet",
         github_repo = {
             "owner": "Mieze",
@@ -403,7 +412,7 @@ kexts = [
     ),
     KextInfo(
         name = "IntelMausiEthernet", 
-        description = "Intel Ethernet LAN driver for macOS",
+        description = "macOS的英特尔以太网LAN驱动程序",
         category = "Ethernet",
         github_repo = {
             "owner": "CloverHackyColor",
@@ -412,7 +421,7 @@ kexts = [
     ),
     KextInfo(
         name = "LucyRTL8125Ethernet", 
-        description = "Provides support for Realtek RTL8125 family", 
+        description = "为Realtek RTL8125系列提供支持", 
         category = "Ethernet",
         github_repo = {
             "owner": "Mieze",
@@ -421,7 +430,7 @@ kexts = [
     ),
     KextInfo(
         name = "NullEthernet", 
-        description = "Creates a Null Ethernet when no supported network hardware is present", 
+        description = "当没有支持的网络硬件时创建一个空以太网", 
         category = "Ethernet",
         github_repo = {
             "owner": "RehabMan",
@@ -434,7 +443,7 @@ kexts = [
     ),
     KextInfo(
         name = "RealtekRTL8100", 
-        description = "Provides support for Realtek RTL8100 family", 
+        description = "为Realtek RTL8100系列提供支持", 
         category = "Ethernet",
         github_repo = {
             "owner": "Mieze",
@@ -447,7 +456,7 @@ kexts = [
     ),
     KextInfo(
         name = "RealtekRTL8111", 
-        description = "Provides support for Realtek RTL8111/8168 family", 
+        description = "为Realtek RTL8111/8168系列提供支持", 
         category = "Ethernet",
         github_repo = {
             "owner": "Mieze",
@@ -460,7 +469,7 @@ kexts = [
     ),
     KextInfo(
         name = "GenericUSBXHCI", 
-        description = "Fixes USB 3.0 issues found on some Ryzen APU-based",
+        description = "修复一些基于AMD APU的系统上发现的USB 3.0问题",
         category = "USB",
         github_repo = {
             "owner": "RattletraPM",
@@ -469,7 +478,7 @@ kexts = [
     ),
     KextInfo(
         name = "USBToolBox", 
-        description = "Flexible USB mapping",
+        description = "灵活的USB映射",
         category = "USB",
         github_repo = {
             "owner": "USBToolBox",
@@ -478,7 +487,7 @@ kexts = [
     ),
     KextInfo(
         name = "UTBDefault", 
-        description = "Enables all USB ports (assumes no port limit)",
+        description = "启用所有USB端口（假设没有端口限制）",
         category = "USB",
         requires_kexts = ["USBToolBox"],
         github_repo = {
@@ -488,7 +497,7 @@ kexts = [
     ),
     KextInfo(
         name = "XHCI-unsupported", 
-        description = "Enables USB 3.0 support for unsupported xHCI controllers",
+        description = "为不支持的xHCI控制器启用USB 3.0支持",
         category = "USB",
         github_repo = {
             "owner": "daliansky",
@@ -501,7 +510,7 @@ kexts = [
     ),
     KextInfo(
         name = "AlpsHID", 
-        description = "Brings native multitouch support to the Alps I2C touchpad",
+        description = "为Alps I2C触摸板带来原生多点触控支持",
         category = "Input",
         requires_kexts = ["VoodooI2C"],
         github_repo = {
@@ -511,7 +520,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooInput", 
-        description = "Provides Magic Trackpad 2 software emulation for arbitrary input sources",
+        description = "为任意输入源提供Magic Trackpad 2软件模拟",
         category = "Input",
         github_repo = {
             "owner": "acidanthera",
@@ -520,7 +529,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooPS2Controller", 
-        description = "Provides support for PS/2 keyboards, trackpads, and mouse",
+        description = "为PS/2键盘、触摸板和鼠标提供支持",
         category = "Input",
         github_repo = {
             "owner": "acidanthera",
@@ -529,7 +538,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooRMI", 
-        description = "Synaptic Trackpad kext over SMBus/I2C",
+        description = "通过SMBus/I2C的Synaptic触摸板内核扩展",
         category = "Input",
         github_repo = {
             "owner": "VoodooSMBus",
@@ -538,7 +547,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooSMBus", 
-        description = "i2c-i801 + ELAN SMBus Touchpad kext",
+        description = "i2c-i801 + ELAN SMBus触摸板内核扩展",
         category = "Input",
         min_darwin_version = "18.0.0",
         github_repo = {
@@ -548,7 +557,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooI2C", 
-        description = "Intel I2C controller and slave device drivers",
+        description = "英特尔I2C控制器和从设备驱动程序",
         category = "Input",
         github_repo = {
             "owner": "VoodooI2C",
@@ -557,7 +566,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooI2CAtmelMXT", 
-        description = "A satellite kext for Atmel MXT I2C touchscreen",
+        description = "用于Atmel MXT I2C触摸屏的卫星内核扩展",
         category = "Input",
         requires_kexts = ["VoodooI2C"],
         github_repo = {
@@ -567,7 +576,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooI2CELAN", 
-        description = "A satellite kext for ELAN I2C touchpads",
+        description = "用于ELAN I2C触摸板的卫星内核扩展",
         category = "Input",
         requires_kexts = ["VoodooI2C"],
         github_repo = {
@@ -577,7 +586,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooI2CFTE", 
-        description = "A satellite kext for FTE based touchpads",
+        description = "用于基于FTE的触摸板的卫星内核扩展",
         category = "Input",
         requires_kexts = ["VoodooI2C"],
         github_repo = {
@@ -587,7 +596,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooI2CHID", 
-        description = "A satellite kext for HID I2C or ELAN1200+ input devices",
+        description = "用于HID I2C或ELAN1200+输入设备的卫星内核扩展",
         category = "Input",
         requires_kexts = ["VoodooI2C"],
         github_repo = {
@@ -597,7 +606,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooI2CSynaptics", 
-        description = "A satellite kext for Synaptics I2C touchpads",
+        description = "用于Synaptics I2C触摸板的卫星内核扩展",
         category = "Input",
         requires_kexts = ["VoodooI2C"],
         github_repo = {
@@ -607,7 +616,7 @@ kexts = [
     ),
     KextInfo(
         name = "AsusSMC", 
-        description = "Supports ALS, keyboard backlight, and Fn keys on ASUS laptops",
+        description = "在华硕笔记本电脑上支持环境光传感器、键盘背光和Fn键",
         category = "Brand Specific",
         max_darwin_version = "23.99.99",
         requires_kexts = ["Lilu"],
@@ -618,7 +627,7 @@ kexts = [
     ),
     KextInfo(
         name = "BigSurface", 
-        description = "A fully intergrated kext for all Surface related hardwares",
+        description = "一个完全集成的内核扩展，支持所有Surface相关硬件",
         category = "Brand Specific",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -628,7 +637,7 @@ kexts = [
     ),
     KextInfo(
         name = "YogaSMC", 
-        description = "Enables support for syncing SMC keys, controlling sensors and managing vendor-specific features",
+        description = "支持同步SMC键、控制传感器和管理特定厂商功能",
         category = "Brand Specific",
         requires_kexts = ["Lilu", "VirtualSMC"],
         github_repo = {
@@ -638,7 +647,7 @@ kexts = [
     ),
     KextInfo(
         name = "CtlnaAHCIPort", 
-        description = "Improves support for certain SATA controllers", 
+        description = "改进对某些SATA控制器的支持", 
         category = "Storage",
         min_darwin_version = "20.0.0",
         conflict_group_id = "SATA",
@@ -650,7 +659,7 @@ kexts = [
     ),
     KextInfo(
         name = "SATA-unsupported", 
-        description = "Improves support for certain SATA controllers", 
+        description = "改进对某些SATA控制器的支持", 
         category = "Storage",
         max_darwin_version = "19.99.99",
         conflict_group_id = "SATA",
@@ -662,7 +671,7 @@ kexts = [
     ),
     KextInfo(
         name = "NVMeFix", 
-        description = "Addresses compatibility and performance issues with NVMe SSDs", 
+        description = "解决NVMe SSD的兼容性和性能问题", 
         category = "Storage",
         min_darwin_version = "18.0.0",
         requires_kexts = ["Lilu"],
@@ -673,7 +682,7 @@ kexts = [
     ),
     KextInfo(
         name = "RealtekCardReader", 
-        description = "Realtek PCIe/USB-based SD card reader driver", 
+        description = "Realtek PCIe/USB SD卡读卡器驱动程序", 
         category = "Card Reader",
         min_darwin_version = "18.0.0",
         max_darwin_version = "23.99.99",
@@ -686,7 +695,7 @@ kexts = [
     ),
     KextInfo(
         name = "RealtekCardReaderFriend", 
-        description = "Makes System Information recognize your Realtek card reader",
+        description = "让系统信息识别你的Realtek读卡器",
         category = "Card Reader",
         min_darwin_version = "18.0.0",
         max_darwin_version = "22.99.99",
@@ -698,7 +707,7 @@ kexts = [
     ), 
     KextInfo(
         name = "Sinetek-rtsx", 
-        description = "Realtek PCIe-based SD card reader driver",
+        description = "Realtek PCIe SD卡读卡器驱动程序",
         category = "Card Reader",
         conflict_group_id = "RealtekCardReader",
         github_repo = {
@@ -708,7 +717,7 @@ kexts = [
     ),
     KextInfo(
         name = "AmdTscSync", 
-        description = "A modified version of VoodooTSCSync for AMD CPUs",
+        description = "适用于AMD CPU的VoodooTSCSync修改版本",
         category = "TSC Synchronization",
         conflict_group_id = "TSC",
         github_repo = {
@@ -718,7 +727,7 @@ kexts = [
     ),
     KextInfo(
         name = "VoodooTSCSync", 
-        description = "A kernel extension which will synchronize the TSC on Intel CPUs",
+        description = "同步英特尔CPU上TSC的内核扩展",
         category = "TSC Synchronization",
         conflict_group_id = "TSC",
         github_repo = {
@@ -732,7 +741,7 @@ kexts = [
     ),
     KextInfo(
         name = "CpuTscSync", 
-        description = "Lilu plugin for TSC sync and disabling xcpm_urgency on Intel CPUs",
+        description = "用于TSC同步和禁用英特尔CPU上xcpm_urgency的Lilu插件",
         category = "TSC Synchronization",
         requires_kexts = ["Lilu"],
         conflict_group_id = "TSC",
@@ -743,7 +752,7 @@ kexts = [
     ),
     KextInfo(
         name = "ForgedInvariant", 
-        description = "The plug & play kext for syncing the TSC on AMD & Intel",
+        description = "用于在AMD和英特尔上同步TSC的即插即用内核扩展",
         category = "TSC Synchronization",
         requires_kexts = ["Lilu"],
         conflict_group_id = "TSC",
@@ -758,7 +767,7 @@ kexts = [
     ),
     KextInfo(
         name = "AMFIPass", 
-        description = "A replacement for amfi=0x80 boot argument",
+        description = "amfi=0x80启动参数的替代方案",
         category = "Extras",
         min_darwin_version = "20.0.0",
         requires_kexts = ["Lilu"],
@@ -769,7 +778,7 @@ kexts = [
     ),
     KextInfo(
         name = "ASPP-Override", 
-        description = "Re-enable CPU power management for Intel Sandy Bridge CPUs",
+        description = "为英特尔Sandy Bridge CPU重新启用CPU电源管理",
         category = "Extras",
         min_darwin_version = "21.4.0",
         download_info = {
@@ -779,7 +788,7 @@ kexts = [
     ),
     KextInfo(
         name = "AppleIntelCPUPowerManagement", 
-        description = "Re-enable CPU power management on legacy Intel CPUs", 
+        description = "在旧版英特尔CPU上重新启用CPU电源管理", 
         category = "Extras",
         min_darwin_version = "22.0.0",
         download_info = {
@@ -789,7 +798,7 @@ kexts = [
     ),
     KextInfo(
         name = "AppleIntelCPUPowerManagementClient", 
-        description = "Re-enable CPU power management on legacy Intel CPUs", 
+        description = "在旧版英特尔CPU上重新启用CPU电源管理", 
         category = "Extras",
         min_darwin_version = "22.0.0",
         download_info = {
@@ -799,7 +808,7 @@ kexts = [
     ),
     KextInfo(
         name = "AppleMCEReporterDisabler", 
-        description = "Disables AppleMCEReporter.kext to prevent kernel panics", 
+        description = "禁用AppleMCEReporter.kext以防止内核恐慌", 
         category = "Extras",
         download_info = {
             "id": 738162736, 
@@ -808,7 +817,7 @@ kexts = [
     ),
     KextInfo(
         name = "BrightnessKeys", 
-        description = "Handler for brightness keys without DSDT patches",
+        description = "无需DSDT补丁的亮度按键处理程序",
         category = "Extras",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -818,7 +827,7 @@ kexts = [
     ),
     KextInfo(
         name = "CPUFriend", 
-        description = "Dynamic power management data injection (requires CPUFriendDataProvider)",
+        description = "动态电源管理数据注入（需要CPUFriendDataProvider）",
         category = "Extras",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -828,7 +837,7 @@ kexts = [
     ),
     KextInfo(
         name = "CpuTopologyRebuild", 
-        description = "Optimizes the core configuration of Intel Alder Lake CPUs+",
+        description = "优化英特尔Alder Lake及以上CPU的核心配置",
         category = "Extras",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -838,7 +847,7 @@ kexts = [
     ),
     KextInfo(
         name = "CryptexFixup", 
-        description = "Various patches to install Rosetta cryptex",
+        description = "各种用于安装Rosetta cryptex的补丁",
         category = "Extras",
         min_darwin_version = "22.0.0",
         requires_kexts = ["Lilu"],
@@ -849,7 +858,7 @@ kexts = [
     ),
     KextInfo(
         name = "ECEnabler", 
-        description = "Allows reading Embedded Controller fields over 1 byte long",
+        description = "允许读取长度超过1字节的嵌入式控制器字段",
         category = "Extras",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -859,7 +868,7 @@ kexts = [
     ),
     KextInfo(
         name = "FeatureUnlock", 
-        description = "Enable additional features on unsupported hardware",
+        description = "在不受支持的硬件上启用额外功能",
         category = "Extras",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -869,7 +878,7 @@ kexts = [
     ),
     KextInfo(
         name = "HibernationFixup", 
-        description = "Fixes hibernation compatibility issues",
+        description = "修复休眠兼容性问题",
         category = "Extras",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -879,7 +888,7 @@ kexts = [
     ),
     KextInfo(
         name = "NoTouchID", 
-        description = "Avoid lag in authentication dialogs for board IDs with Touch ID sensors",
+        description = "避免带有Touch ID传感器的板ID在认证对话框中出现延迟",
         category = "Extras",
         min_darwin_version = "17.5.0",
         max_darwin_version = "19.6.0",
@@ -891,7 +900,7 @@ kexts = [
     ),
     KextInfo(
         name = "RestrictEvents", 
-        description = "Blocking unwanted processes and unlocking features",
+        description = "阻止不需要的进程并解锁功能",
         category = "Extras",
         requires_kexts = ["Lilu"],
         github_repo = {
@@ -901,7 +910,7 @@ kexts = [
     ),
     KextInfo(
         name = "RTCMemoryFixup", 
-        description = "Emulate some offsets in your CMOS (RTC) memory",
+        description = "模拟CMOS（RTC）内存中的一些偏移量",
         category = "Extras",
         requires_kexts = ["Lilu"],
         github_repo = {

@@ -334,4 +334,8 @@ if __name__ == "__main__":
             integrity_checker_instance=backend.integrity_checker
         ).run_update()
     
-    sys.exit(app.exec())
+    try:
+        sys.exit(app.exec())
+    except KeyboardInterrupt:
+        # 捕获 Ctrl+C 中断，静默退出，不打印堆栈信息
+        sys.exit(0)

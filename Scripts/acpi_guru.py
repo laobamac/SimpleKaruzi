@@ -3291,7 +3291,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "WMIS", 0x00000000)
             if device_info.get("Bus Type") == "ACPI" and device_info.get("Device") in pci_data.YogaHIDs:
                 selected_patches.append("WMIS")
 
-        self.utils.log_message("[ACPI GURU] Selected patches: {}".format(", ".join(selected_patches)), level="INFO")
+        self.utils.log_message("[ACPI GURU] 已选择的补丁: {}".format(", ".join(selected_patches)), level="INFO")
         for patch in self.patches:
             patch.checked = patch.name in selected_patches
     
@@ -3305,7 +3305,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "WMIS", 0x00000000)
             if patch.checked:
                 checked_indices.append(i)
                 
-        result = show_checklist_dialog("Configure ACPI Patches", "Select ACPI patches you want to apply:", items, checked_indices)
+        result = show_checklist_dialog("配置 ACPI 补丁", "选择你想要应用的 ACPI 补丁:", items, checked_indices)
         
         if result is not None:
             for i, patch in enumerate(self.patches):
