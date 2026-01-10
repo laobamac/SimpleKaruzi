@@ -278,7 +278,7 @@ class KextMaestro:
                 if self.utils.parse_darwin_version(macos_version) >= self.utils.parse_darwin_version("25.0.0"):
                     content = (
                         "自 macOS Tahoe 26 起，原版 WhateverGreen 在 AMD 显卡上存在已知的接口修补问题。<br>"
-                        "将使用 laobamac/WhateverGreen 作为优秀的替代方案。<br>"
+                        "建议使用 laobamac/WhateverGreen 作为优秀的替代方案。<a href='https://wxcznb.lanzouw.com/iRoL43fsdmre'>点击此处下载</a><br>"
                     )
                     show_info("警告", content)
                     break

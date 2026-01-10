@@ -165,3 +165,5 @@ OCK_Files
 create_sksp.py
 settings.json
 config/
+convert_to_icns.sh
+icon.*

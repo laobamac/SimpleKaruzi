@@ -1,9 +1,9 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QApplication
 from qfluentwidgets import (
     SubtitleLabel, BodyLabel, ScrollArea, FluentIcon, 
     GroupHeaderCardWidget, CardWidget, StrongBodyLabel,
-    isDarkTheme
+    SwitchButton, IndicatorPosition, isDarkTheme
 )
 
 from Scripts.styles import COLORS, SPACING
@@ -12,26 +12,22 @@ from Scripts.datasets import os_data, pci_data
 
 
 class CompatibilityStatusBanner:
-    def __init__(self, parent=None, ui_utils_instance=None, layout=None):
-        self.parent = parent
-        self.ui_utils = ui_utils_instance if ui_utils_instance else ui_utils.UIUtils()
+    def __init__(self, parent_widget, layout):
+        self.parent = parent_widget
+        self.ui_utils = ui_utils.UIUtils()
         self.layout = layout
         self.card = None
-        self.body_label = None
-        self.note_label = None
 
     def _create_card(self, card_type, icon, title, message, note=""):
         body_text = message
         if note:
-            # 根据主题选择注释文字颜色
             note_color = "#d2d2d2" if isDarkTheme() else COLORS["text_secondary"]
             body_text += "<br><br><i style=\"color: {}; font-size: 12px;\">{}</i>".format(note_color, note)
         
         if self.card:
-            if self.layout:
-                self.layout.removeWidget(self.card)
-            self.card.setParent(None)
+            self.layout.removeWidget(self.card)
             self.card.deleteLater()
+            self.card = None
         
         self.card = self.ui_utils.custom_card(
             card_type=card_type,
@@ -41,9 +37,7 @@ class CompatibilityStatusBanner:
             parent=self.parent
         )
         self.card.setVisible(True)
-        
-        if self.layout:
-            self.layout.insertWidget(2, self.card)
+        self.layout.addWidget(self.card)
         
         return self.card
 
@@ -67,8 +61,13 @@ class CompatibilityPage(ScrollArea):
         self.ui_utils = ui_utils_instance if ui_utils_instance else ui_utils.UIUtils()
         self.contentWidget = None
         self.contentLayout = None
-        self.native_support_label = None
-        self.ocl_support_label = None
+        
+        # 统计状态
+        self.found_unsupported = False
+        self.found_oclp = False
+        
+        # 默认不显示详情 (简约模式)
+        self.show_details = False
         
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setWidget(self.scrollWidget)
@@ -97,17 +96,28 @@ class CompatibilityPage(ScrollArea):
         title_layout.addWidget(title_label)
 
         subtitle_label = BodyLabel("查看硬件与 macOS 的兼容性")
-        # 移除强制颜色，以支持暗夜模式
-        # subtitle_label.setStyleSheet("color: {};".format(COLORS["text_secondary"]))
         title_layout.addWidget(subtitle_label)
 
         header_layout.addWidget(title_block, 1)
 
+        # 详细模式切换开关
+        self.detail_switch = SwitchButton(parent=header_container)
+        self.detail_switch.setOnText("详细信息")
+        self.detail_switch.setOffText("简约视图")
+        self.detail_switch.setChecked(self.show_details)
+        self.detail_switch.checkedChanged.connect(self._on_detail_switch_changed)
+        header_layout.addWidget(self.detail_switch, 0, Qt.AlignmentFlag.AlignRight)
+
         self.expandLayout.addWidget(header_container)
         
-        self.status_banner = CompatibilityStatusBanner(self.scrollWidget, self.ui_utils, self.expandLayout)
+        self.bannerContainer = QWidget()
+        self.bannerLayout = QVBoxLayout(self.bannerContainer)
+        self.bannerLayout.setContentsMargins(0, 0, 0, 0)
+        self.expandLayout.addWidget(self.bannerContainer)
         
-        self.expandLayout.addSpacing(SPACING["large"])
+        self.status_banner = CompatibilityStatusBanner(self.bannerContainer, self.bannerLayout)
+        
+        self.expandLayout.addSpacing(SPACING["medium"])
 
         self.contentWidget = QWidget()
         self.contentLayout = QVBoxLayout(self.contentWidget)
@@ -116,6 +126,16 @@ class CompatibilityPage(ScrollArea):
         self.expandLayout.addWidget(self.contentWidget)
 
         self._show_placeholder()
+
+    def _on_detail_switch_changed(self, checked):
+        self.show_details = checked
+        self.update_display()
+
+    def _is_device_supported(self, compat):
+        """判断设备是否被原生 macOS 支持"""
+        if not compat or compat == (None, None):
+            return False
+        return True
 
     def update_status_banner(self):
         if not self.controller.hardware_state.hardware_report:
@@ -206,21 +226,24 @@ class CompatibilityPage(ScrollArea):
         return "未知", "#605E5C"
 
     def update_display(self):
-        if not self.contentLayout:
-            return
-
-        while self.contentLayout.count() > 0:
-            item = self.contentLayout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-
+        if self.contentLayout:
+            while self.contentLayout.count() > 0:
+                item = self.contentLayout.takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.deleteLater()
+        
         if not self.controller.hardware_state.hardware_report:
             self._show_placeholder()
+            self.update_status_banner()
             return
 
         report = self.controller.hardware_state.hardware_report
         cards_added = 0
+        
+        # 重置统计
+        self.found_unsupported = False
+        self.found_oclp = False
 
         cards_added += self._add_cpu_card(report)
         cards_added += self._add_gpu_card(report)
@@ -231,22 +254,26 @@ class CompatibilityPage(ScrollArea):
         cards_added += self._add_biometric_card(report)
         cards_added += self._add_sd_card(report)
 
-        if cards_added == 0:
+        # 逻辑判断：显示提示卡片
+        if cards_added == 0 and not self.show_details:
+            # 简约模式 + 无任何卡片显示 => 全部完美兼容
+            self._show_all_good_label()
+        elif not self.show_details and not self.found_unsupported and self.found_oclp:
+            # 简约模式 + 有卡片显示 + 没有不兼容项 + 但有 OCLP 项 => 显示 OCLP 提示
+            # 注意：这里的卡片就是 OCLP 的设备
+            self._show_oclp_hint_label()
+        elif cards_added == 0 and self.show_details:
             self._show_no_data_label()
 
         self.contentLayout.addStretch()
         self.update_status_banner()
-        self.scrollWidget.updateGeometry()
-        self.scrollWidget.update()
-        self.update()
+        QApplication.processEvents()
 
     def _show_placeholder(self):
         self.placeholder_label = BodyLabel("加载硬件报告以查看兼容性信息")
         self.placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # 适配暗夜模式颜色
         text_color = "#9E9E9E" if isDarkTheme() else "#605E5C"
-        self.placeholder_label.setStyleSheet(f"color: {text_color}; padding: 40px;")
+        self.placeholder_label.setStyleSheet("color: {}; padding: 40px;".format(text_color))
         self.placeholder_label.setWordWrap(True)
         self.contentLayout.addWidget(self.placeholder_label)
         self.contentLayout.addStretch()
@@ -261,6 +288,29 @@ class CompatibilityPage(ScrollArea):
         )
         self.contentLayout.addWidget(no_data_card)
 
+    def _show_all_good_label(self):
+        """当简约模式下所有硬件都兼容时显示"""
+        all_good_card = self.ui_utils.custom_card(
+            card_type="success",
+            icon=FluentIcon.COMPLETED,
+            title="未检测到不兼容的硬件",
+            body="太棒了！您的所有硬件组件（CPU、显卡、网卡等）似乎都兼容 macOS。<br>您可以点击右上角的“详细信息”开关查看完整规格列表。",
+            parent=self.scrollWidget
+        )
+        self.contentLayout.addWidget(all_good_card)
+
+    def _show_oclp_hint_label(self):
+        """当所有硬件都支持但部分需要 OCLP 时显示"""
+        oclp_card = self.ui_utils.custom_card(
+            card_type="warning", # 使用黄色警告样式
+            icon=FluentIcon.INFO,
+            title="检测到需要 OCLP 补丁的硬件",
+            body="您的部分硬件在较新版本的 macOS 上需要使用 <b>OCLP(-Mod)</b> 才能正常工作。<br>SimpleKaruzi 将在构建过程中自动协助您配置补丁。",
+            parent=self.scrollWidget
+        )
+        # 插入到最前面 (索引0)
+        self.contentLayout.insertWidget(0, oclp_card)
+
     def _add_compatibility_group(self, card, title, compat):
         compat_text, compat_color = self.format_compatibility(compat)
         self.ui_utils.add_group_with_indent(
@@ -272,10 +322,43 @@ class CompatibilityPage(ScrollArea):
             indent_level=1
         )
 
+    def _add_technical_details(self, card, details_dict):
+        if not self.show_details:
+            return
+            
+        details_text = []
+        for k, v in details_dict.items():
+            if v:
+                details_text.append("{}: {}".format(k, v))
+        
+        if details_text:
+            self.ui_utils.add_group_with_indent(
+                card,
+                self.ui_utils.colored_icon(FluentIcon.CODE, COLORS["info"]),
+                "技术规格",
+                " • ".join(details_text),
+                indent_level=1
+            )
+
+    def _check_and_update_stats(self, compat, has_oclp=False):
+        """辅助方法：更新不支持/OCLP计数"""
+        is_supported = self._is_device_supported(compat)
+        if not is_supported:
+            self.found_unsupported = True
+        if has_oclp:
+            self.found_oclp = True
+        return is_supported
+
     def _add_cpu_card(self, report):
         if "CPU" not in report: return 0
         cpu_info = report["CPU"]
         if not isinstance(cpu_info, dict): return 0
+        
+        compat = cpu_info.get("Compatibility", (None, None))
+        is_supported = self._check_and_update_stats(compat)
+        
+        if not self.show_details and is_supported:
+            return 0
         
         cpu_card = GroupHeaderCardWidget(self.scrollWidget)
         cpu_card.setTitle("处理器 (CPU)")
@@ -289,22 +372,14 @@ class CompatibilityPage(ScrollArea):
             indent_level=0
         )
 
-        self._add_compatibility_group(cpu_card, "macOS 兼容性", cpu_info.get("Compatibility", (None, None)))
+        self._add_compatibility_group(cpu_card, "macOS 兼容性", compat)
 
-        details = []
-        if cpu_info.get("Codename"):
-            details.append("代号: {}".format(cpu_info.get("Codename")))
-        if cpu_info.get("Core Count"):
-            details.append("核心数: {}".format(cpu_info.get("Core Count")))
-
-        if details:
-            self.ui_utils.add_group_with_indent(
-                cpu_card,
-                self.ui_utils.colored_icon(FluentIcon.INFO, COLORS["info"]),
-                "详细信息",
-                " • ".join(details),
-                indent_level=1
-            )
+        self._add_technical_details(cpu_card, {
+            "代号": cpu_info.get("Codename"),
+            "核心数": cpu_info.get("Core Count"),
+            "线程数": cpu_info.get("Thread Count"),
+            "基础频率": cpu_info.get("Base Frequency")
+        })
 
         self.contentLayout.addWidget(cpu_card)
         return 1
@@ -312,10 +387,23 @@ class CompatibilityPage(ScrollArea):
     def _add_gpu_card(self, report):
         if "GPU" not in report or not report["GPU"]: return 0
         
+        visible_items = []
+        for gpu_name, gpu_info in report["GPU"].items():
+            compat = gpu_info.get("Compatibility", (None, None))
+            has_oclp = "OCLP Compatibility" in gpu_info
+            is_supported = self._check_and_update_stats(compat, has_oclp)
+            
+            # 显示条件：详细模式 OR 不原生支持 OR 需要 OCLP 补丁
+            if self.show_details or not is_supported or has_oclp:
+                visible_items.append((gpu_name, gpu_info, compat))
+        
+        if not visible_items:
+            return 0
+            
         gpu_card = GroupHeaderCardWidget(self.scrollWidget)
         gpu_card.setTitle("显卡 (Graphics)")
 
-        for idx, (gpu_name, gpu_info) in enumerate(report["GPU"].items()):
+        for gpu_name, gpu_info, compat in visible_items:
             device_type = gpu_info.get("Device Type", "Unknown")
             self.ui_utils.add_group_with_indent(
                 gpu_card,
@@ -325,14 +413,13 @@ class CompatibilityPage(ScrollArea):
                 indent_level=0
             )
 
-            self._add_compatibility_group(gpu_card, "macOS 兼容性", gpu_info.get("Compatibility", (None, None)))
+            self._add_compatibility_group(gpu_card, "macOS 兼容性", compat)
 
             if "OCLP Compatibility" in gpu_info:
                 oclp_compat = gpu_info.get("OCLP Compatibility")
                 oclp_text, oclp_color = self.format_compatibility(oclp_compat)
-                
-                # 适配文字颜色
                 info_text_color = "#d2d2d2" if isDarkTheme() else COLORS["text_secondary"]
+                
                 self.ui_utils.add_group_with_indent(
                     gpu_card,
                     self.ui_utils.colored_icon(FluentIcon.IOT, COLORS["primary"]),
@@ -342,8 +429,14 @@ class CompatibilityPage(ScrollArea):
                     indent_level=1
                 )
 
-            if "Monitor" in report:
-                self._add_monitor_info(gpu_card, gpu_name, gpu_info, report["Monitor"])
+            if self.show_details:
+                self._add_technical_details(gpu_card, {
+                    "设备 ID": gpu_info.get("Device ID"),
+                    "供应商": gpu_info.get("Manufacturer")
+                })
+
+                if "Monitor" in report:
+                    self._add_monitor_info(gpu_card, gpu_name, gpu_info, report["Monitor"])
 
         self.contentLayout.addWidget(gpu_card)
         return 1
@@ -377,10 +470,21 @@ class CompatibilityPage(ScrollArea):
     def _add_sound_card(self, report):
         if "Sound" not in report or not report["Sound"]: return 0
         
+        visible_items = []
+        for audio_device, audio_props in report["Sound"].items():
+            compat = audio_props.get("Compatibility", (None, None))
+            is_supported = self._check_and_update_stats(compat)
+            
+            if self.show_details or not is_supported:
+                visible_items.append((audio_device, audio_props, compat))
+        
+        if not visible_items:
+            return 0
+        
         sound_card = GroupHeaderCardWidget(self.scrollWidget)
         sound_card.setTitle("声卡 (Audio)")
 
-        for audio_device, audio_props in report["Sound"].items():
+        for audio_device, audio_props, compat in visible_items:
             self.ui_utils.add_group_with_indent(
                 sound_card,
                 self.ui_utils.colored_icon(FluentIcon.MUSIC, COLORS["primary"]),
@@ -389,17 +493,23 @@ class CompatibilityPage(ScrollArea):
                 indent_level=0
             )
 
-            self._add_compatibility_group(sound_card, "macOS 兼容性", audio_props.get("Compatibility", (None, None)))
+            self._add_compatibility_group(sound_card, "macOS 兼容性", compat)
 
-            endpoints = audio_props.get("Audio Endpoints", [])
-            if endpoints:
-                self.ui_utils.add_group_with_indent(
-                    sound_card,
-                    self.ui_utils.colored_icon(FluentIcon.HEADPHONE, COLORS["info"]),
-                    "音频接口",
-                    ", ".join(endpoints),
-                    indent_level=1
-                )
+            if self.show_details:
+                self._add_technical_details(sound_card, {
+                    "设备 ID": audio_props.get("Device ID"),
+                    "控制器 ID": audio_props.get("Controller Device ID")
+                })
+                
+                endpoints = audio_props.get("Audio Endpoints", [])
+                if endpoints:
+                    self.ui_utils.add_group_with_indent(
+                        sound_card,
+                        self.ui_utils.colored_icon(FluentIcon.HEADPHONE, COLORS["info"]),
+                        "音频接口",
+                        ", ".join(endpoints),
+                        indent_level=1
+                    )
 
         self.contentLayout.addWidget(sound_card)
         return 1
@@ -407,10 +517,22 @@ class CompatibilityPage(ScrollArea):
     def _add_network_card(self, report):
         if "Network" not in report or not report["Network"]: return 0
         
+        visible_items = []
+        for device_name, device_props in report["Network"].items():
+            compat = device_props.get("Compatibility", (None, None))
+            has_oclp = "OCLP Compatibility" in device_props
+            is_supported = self._check_and_update_stats(compat, has_oclp)
+            
+            if self.show_details or not is_supported or has_oclp:
+                visible_items.append((device_name, device_props, compat))
+        
+        if not visible_items:
+            return 0
+        
         network_card = GroupHeaderCardWidget(self.scrollWidget)
         network_card.setTitle("网卡 (Network)")
 
-        for device_name, device_props in report["Network"].items():
+        for device_name, device_props, compat in visible_items:
             self.ui_utils.add_group_with_indent(
                 network_card,
                 self.ui_utils.colored_icon(FluentIcon.WIFI, COLORS["primary"]),
@@ -419,13 +541,13 @@ class CompatibilityPage(ScrollArea):
                 indent_level=0
             )
 
-            self._add_compatibility_group(network_card, "macOS 兼容性", device_props.get("Compatibility", (None, None)))
+            self._add_compatibility_group(network_card, "macOS 兼容性", compat)
 
             if "OCLP Compatibility" in device_props:
                 oclp_compat = device_props.get("OCLP Compatibility")
                 oclp_text, oclp_color = self.format_compatibility(oclp_compat)
-                
                 info_text_color = "#d2d2d2" if isDarkTheme() else COLORS["text_secondary"]
+                
                 self.ui_utils.add_group_with_indent(
                     network_card,
                     self.ui_utils.colored_icon(FluentIcon.IOT, COLORS["primary"]),
@@ -436,6 +558,12 @@ class CompatibilityPage(ScrollArea):
                 )
 
             self._add_continuity_info(network_card, device_props)
+            
+            if self.show_details:
+                self._add_technical_details(network_card, {
+                    "设备 ID": device_props.get("Device ID"),
+                    "总线类型": device_props.get("Bus Type")
+                })
 
         self.contentLayout.addWidget(network_card)
         return 1
@@ -457,7 +585,7 @@ class CompatibilityPage(ScrollArea):
             continuity_info = "有限支持 (无接力功能)。不推荐在 macOS 使用 Atheros 网卡。"
             continuity_color = COLORS["error"]
 
-        if continuity_info:
+        if continuity_info and (self.show_details or continuity_color != COLORS["success"]):
             self.ui_utils.add_group_with_indent(
                 network_card,
                 self.ui_utils.colored_icon(FluentIcon.SYNC, continuity_color),
@@ -470,10 +598,21 @@ class CompatibilityPage(ScrollArea):
     def _add_storage_card(self, report):
         if "Storage Controllers" not in report or not report["Storage Controllers"]: return 0
         
+        visible_items = []
+        for controller_name, controller_props in report["Storage Controllers"].items():
+            compat = controller_props.get("Compatibility", (None, None))
+            is_supported = self._check_and_update_stats(compat)
+            
+            if self.show_details or not is_supported:
+                visible_items.append((controller_name, controller_props, compat))
+        
+        if not visible_items:
+            return 0
+        
         storage_card = GroupHeaderCardWidget(self.scrollWidget)
         storage_card.setTitle("存储 (Storage)")
 
-        for controller_name, controller_props in report["Storage Controllers"].items():
+        for controller_name, controller_props, compat in visible_items:
             self.ui_utils.add_group_with_indent(
                 storage_card,
                 self.ui_utils.colored_icon(FluentIcon.FOLDER, COLORS["primary"]),
@@ -482,17 +621,23 @@ class CompatibilityPage(ScrollArea):
                 indent_level=0
             )
 
-            self._add_compatibility_group(storage_card, "macOS 兼容性", controller_props.get("Compatibility", (None, None)))
+            self._add_compatibility_group(storage_card, "macOS 兼容性", compat)
 
-            disk_drives = controller_props.get("Disk Drives", [])
-            if disk_drives:
-                self.ui_utils.add_group_with_indent(
-                    storage_card,
-                    self.ui_utils.colored_icon(FluentIcon.FOLDER, COLORS["info"]),
-                    "磁盘驱动器",
-                    ", ".join(disk_drives),
-                    indent_level=1
-                )
+            if self.show_details:
+                self._add_technical_details(storage_card, {
+                    "设备 ID": controller_props.get("Device ID"),
+                    "供应商": controller_props.get("Manufacturer")
+                })
+
+                disk_drives = controller_props.get("Disk Drives", [])
+                if disk_drives:
+                    self.ui_utils.add_group_with_indent(
+                        storage_card,
+                        self.ui_utils.colored_icon(FluentIcon.FOLDER, COLORS["info"]),
+                        "磁盘驱动器",
+                        ", ".join(disk_drives),
+                        indent_level=1
+                    )
 
         self.contentLayout.addWidget(storage_card)
         return 1
@@ -500,10 +645,21 @@ class CompatibilityPage(ScrollArea):
     def _add_bluetooth_card(self, report):
         if "Bluetooth" not in report or not report["Bluetooth"]: return 0
         
+        visible_items = []
+        for bluetooth_name, bluetooth_props in report["Bluetooth"].items():
+            compat = bluetooth_props.get("Compatibility", (None, None))
+            is_supported = self._check_and_update_stats(compat)
+            
+            if self.show_details or not is_supported:
+                visible_items.append((bluetooth_name, bluetooth_props, compat))
+        
+        if not visible_items:
+            return 0
+        
         bluetooth_card = GroupHeaderCardWidget(self.scrollWidget)
         bluetooth_card.setTitle("蓝牙 (Bluetooth)")
 
-        for bluetooth_name, bluetooth_props in report["Bluetooth"].items():
+        for bluetooth_name, bluetooth_props, compat in visible_items:
             self.ui_utils.add_group_with_indent(
                 bluetooth_card,
                 self.ui_utils.colored_icon(FluentIcon.BLUETOOTH, COLORS["primary"]),
@@ -512,13 +668,25 @@ class CompatibilityPage(ScrollArea):
                 indent_level=0
             )
 
-            self._add_compatibility_group(bluetooth_card, "macOS 兼容性", bluetooth_props.get("Compatibility", (None, None)))
+            self._add_compatibility_group(bluetooth_card, "macOS 兼容性", compat)
+            
+            if self.show_details:
+                self._add_technical_details(bluetooth_card, {
+                    "设备 ID": bluetooth_props.get("Device ID"),
+                    "供应商": bluetooth_props.get("Manufacturer")
+                })
 
         self.contentLayout.addWidget(bluetooth_card)
         return 1
 
     def _add_biometric_card(self, report):
         if "Biometric" not in report or not report["Biometric"]: return 0
+        
+        # 生物识别全是不兼容的，必须更新 stats
+        for bio_props in report["Biometric"].values():
+            # 假设全不支持
+            self.found_unsupported = True
+        
         bio_card = GroupHeaderCardWidget(self.scrollWidget)
         bio_card.setTitle("生物识别 (Biometric)")
 
@@ -539,6 +707,11 @@ class CompatibilityPage(ScrollArea):
                 "不支持",
                 indent_level=0
             )
+            
+            if self.show_details:
+                self._add_technical_details(bio_card, {
+                    "设备 ID": bio_props.get("Device ID")
+                })
 
         self.contentLayout.addWidget(bio_card)
         return 1
@@ -546,10 +719,21 @@ class CompatibilityPage(ScrollArea):
     def _add_sd_card(self, report):
         if "SD Controller" not in report or not report["SD Controller"]: return 0
         
+        visible_items = []
+        for controller_name, controller_props in report["SD Controller"].items():
+            compat = controller_props.get("Compatibility", (None, None))
+            is_supported = self._check_and_update_stats(compat)
+            
+            if self.show_details or not is_supported:
+                visible_items.append((controller_name, controller_props, compat))
+        
+        if not visible_items:
+            return 0
+        
         sd_card = GroupHeaderCardWidget(self.scrollWidget)
         sd_card.setTitle("SD 控制器")
 
-        for controller_name, controller_props in report["SD Controller"].items():
+        for controller_name, controller_props, compat in visible_items:
             self.ui_utils.add_group_with_indent(
                 sd_card,
                 self.ui_utils.colored_icon(FluentIcon.SAVE, COLORS["primary"]),
@@ -558,7 +742,13 @@ class CompatibilityPage(ScrollArea):
                 indent_level=0
             )
 
-            self._add_compatibility_group(sd_card, "macOS 兼容性", controller_props.get("Compatibility", (None, None)))
+            self._add_compatibility_group(sd_card, "macOS 兼容性", compat)
+            
+            if self.show_details:
+                self._add_technical_details(sd_card, {
+                    "设备 ID": controller_props.get("Device ID"),
+                    "供应商": controller_props.get("Manufacturer")
+                })
 
         self.contentLayout.addWidget(sd_card)
         return 1

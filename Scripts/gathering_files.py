@@ -35,9 +35,7 @@ class gatheringFiles:
         
         self.temporary_dir = self.utils.get_temporary_dir()
         
-        # === 持久化存储路径设置 ===
         if getattr(sys, 'frozen', False):
-            # 打包环境：使用系统用户数据目录
             app_name = "SimpleKaruzi"
             if platform.system() == "Windows":
                 base_dir = os.environ.get("APPDATA", os.path.expanduser("~"))
@@ -48,9 +46,7 @@ class gatheringFiles:
             
             self.ock_files_dir = os.path.join(base_dir, app_name, "OCK_Files")
         else:
-            # 开发环境：保持在项目目录
             self.ock_files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "OCK_Files")
-        # =======================
         
         self.download_history_file = os.path.join(self.ock_files_dir, "history.json")
         self.sksp_manifest_file = os.path.join(self.ock_files_dir, "manifest.json")
@@ -63,7 +59,11 @@ class gatheringFiles:
         
     def update_download_database(self, kexts, download_history):
         download_database = download_history.copy()
-        dortania_builds_data = self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
+        dortania_builds_data = json.loads(
+            json.dumps(
+                self.fetcher.fetch_and_parse_content(self.dortania_builds_url, "json")
+            ).replace("https://github.com", "https://gitapi.simplehac.top/https://github.com")
+        )
         seen_repos = set()
 
         def add_product_to_download_database(products):
@@ -387,18 +387,14 @@ class gatheringFiles:
 
     def fetch_remote_sksp_info(self):
         """获取远程 SKSP manifest 信息"""
-        # 使用 fetcher 获取，它可能已经有处理逻辑
-        # 但如果是 HTTPS 403 问题，可能需要更直接的请求
         try:
             return self.fetcher.fetch_and_parse_content(self.sksp_manifest_url, "json")
         except:
-            # 如果 resource_fetcher 失败，尝试带 header 的直连
             try:
                 req = urllib.request.Request(
                     self.sksp_manifest_url, 
                     headers={'User-Agent': 'Mozilla/5.0 SimpleKaruzi/1.0'}
                 )
-                # 创建不验证 SSL 的上下文
                 ctx = ssl.create_default_context()
                 ctx.check_hostname = False
                 ctx.verify_mode = ssl.CERT_NONE
@@ -435,7 +431,6 @@ class gatheringFiles:
             if dialog:
                 dialog.update_progress(0, "正在连接...")
             
-            # === 关键修复：创建 SSL 忽略上下文并设置 User-Agent ===
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
@@ -483,15 +478,12 @@ class gatheringFiles:
             if dialog: dialog.update_progress(98, "正在解压...")
             self.utils.extract_zip_file(temp_zip, self.temporary_dir)
             
-            # 覆盖 OCK_Files
-            # 假设 zip 结构中有一个 OCK_Files 文件夹
             extracted_ock = os.path.join(self.temporary_dir, "OCK_Files")
             if os.path.exists(extracted_ock):
                 if os.path.exists(self.ock_files_dir):
                     shutil.rmtree(self.ock_files_dir)
                 shutil.move(extracted_ock, self.ock_files_dir)
                 
-                # 保存新的 manifest (如果 zip 包里没带)
                 if not os.path.exists(self.sksp_manifest_file):
                     self.utils.write_file(self.sksp_manifest_file, remote_info)
             else:
