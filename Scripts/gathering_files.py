@@ -326,14 +326,10 @@ class gatheringFiles:
         target_file = "Hardware-Sniffer-CLI.exe"
         possible_paths = []
 
-        # 1. 优先检查开发环境路径 / 内部打包路径 (Scripts 文件夹下)
-        # 获取当前 gathering_files.py 所在的目录
         current_script_dir = os.path.dirname(os.path.realpath(__file__))
         possible_paths.append(os.path.join(current_script_dir, target_file))
 
-        # 2. 检查打包后的外部路径 (如果用户将 exe 放在了主程序旁边)
         if getattr(sys, 'frozen', False):
-            # sys.executable 是主程序的路径
             exe_dir = os.path.dirname(sys.executable)
             possible_paths.append(os.path.join(exe_dir, target_file))
             possible_paths.append(os.path.join(exe_dir, "Scripts", target_file))
