@@ -19,7 +19,18 @@ class DSDT:
         self.acpi_binary_tools = "https://gitapi.simplehac.top/https://github.com/acpica/acpica/releases"
         self.iasl_url_windows_legacy = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/corpnewt/iasl-legacy/main/iasl-legacy-windows.zip"
         self.h = {} # {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+            if os.path.exists(os.path.join(base_path, "Scripts", "iasl.exe")):
+                 self.script_dir = os.path.join(base_path, "Scripts")
+            else:
+                 self.script_dir = base_path # 或者是 base_path
+        else:
+            self.script_dir = os.path.dirname(os.path.realpath(__file__))
+
         self.iasl = self.check_iasl()
+
         #self.iasl_legacy = self.check_iasl(legacy=True)
         if not self.iasl:
             url = self.acpi_binary_tools if os.name=="nt" else \
@@ -277,40 +288,24 @@ class DSDT:
             
         return None
     
-    def check_iasl(self, legacy=False, try_downloading=True):
+    def check_iasl(self, legacy=False, try_downloading=True): # try_downloading 参数保留以兼容接口，但不再使用
         if sys.platform == "win32":
-            targets = (os.path.join(os.path.dirname(os.path.realpath(__file__)), "iasl-legacy.exe" if legacy else "iasl.exe"),)
+            target = os.path.join(self.script_dir, "iasl.exe") # Windows 下直接找 iasl.exe
         else:
             if legacy:
-                targets = (os.path.join(os.path.dirname(os.path.realpath(__file__)), "iasl-legacy"),)
+                targets = (os.path.join(self.script_dir, "iasl-legacy"),)
             else:
                 targets = (
-                    os.path.join(os.path.dirname(os.path.realpath(__file__)), "iasl-dev"),
-                    os.path.join(os.path.dirname(os.path.realpath(__file__)), "iasl-stable"),
-                    os.path.join(os.path.dirname(os.path.realpath(__file__)), "iasl")
+                    os.path.join(self.script_dir, "iasl-dev"),
+                    os.path.join(self.script_dir, "iasl-stable"),
+                    os.path.join(self.script_dir, "iasl")
                 )
-        target = next((t for t in targets if os.path.exists(t)),None)
-        if target or not try_downloading:
-            # Either found it - or we didn't, and have already tried downloading
+            target = next((t for t in targets if os.path.exists(t)), None)
+
+        if target and os.path.exists(target):
             return target
-        # Need to download
-        temp = tempfile.mkdtemp()
-        try:
-            if sys.platform == "darwin":
-                self._download_and_extract(temp,self.iasl_url_macOS_legacy if legacy else self.iasl_url_macOS)
-            elif sys.platform.startswith("linux"):
-                self._download_and_extract(temp,self.iasl_url_linux_legacy if legacy else self.iasl_url_linux)
-            elif sys.platform == "win32":
-                iasl_url_windows = self.iasl_url_windows_legacy if legacy else self.get_latest_iasl()
-                if not iasl_url_windows: raise Exception("Could not get latest iasl for Windows")
-                self._download_and_extract(temp,iasl_url_windows)
-            else: 
-                raise Exception("Unknown OS")
-        except Exception as e:
-            print("An error occurred :(\n - {}".format(e))
-        shutil.rmtree(temp, ignore_errors=True)
-        # Check again after downloading
-        return self.check_iasl(legacy=legacy,try_downloading=False)
+
+        return None
 
     def _download_and_extract(self, temp, url):
         self.u.log_message("[DSDT] Downloading iasl...", level="INFO")
@@ -344,7 +339,7 @@ class DSDT:
         print("")
         res = self.check_output(output)
         if os.name == "nt":
-            target = os.path.join(os.path.dirname(os.path.realpath(__file__)),"acpidump.exe")
+            target = os.path.join(self.script_dir, "acpidump.exe")
             if os.path.exists(target):
                 # Dump to the target folder
                 print("Dumping tables to {}...".format(res))
