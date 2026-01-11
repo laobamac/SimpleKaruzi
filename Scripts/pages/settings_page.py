@@ -11,24 +11,23 @@ from qfluentwidgets import (
     SubtitleLabel, SettingCard, setTheme, Theme, PrimaryPushSettingCard
 )
 
+from Scripts import ui_utils
 from Scripts.custom_dialogs import show_confirmation, show_info, show_download_dialog
 from Scripts.styles import COLORS, SPACING
 import updater
 
+# === SKSP Worker ===
 class SKSPCheckWorker(QObject):
     finished = pyqtSignal(bool, dict)
-
     def __init__(self, backend):
         super().__init__()
         self.backend = backend
-
     @pyqtSlot()
     def run(self):
         try:
             local_info = self.backend.o.get_local_sksp_info()
             local_ver = local_info.get("version") if local_info else "0.0.0"
             remote_info = self.backend.o.fetch_remote_sksp_info()
-            
             if remote_info and remote_info.get("version") > local_ver:
                 self.finished.emit(True, remote_info)
             else:
@@ -36,15 +35,12 @@ class SKSPCheckWorker(QObject):
         except Exception as e:
             self.finished.emit(False, {"error": str(e)})
 
-# === SKSP 下载 Worker ===
 class SKSPDownloadWorker(QObject):
     finished = pyqtSignal(bool, str)
-
     def __init__(self, backend, dialog):
         super().__init__()
         self.backend = backend
         self.dialog = dialog
-
     @pyqtSlot()
     def run(self):
         try:
@@ -53,18 +49,38 @@ class SKSPDownloadWorker(QObject):
         except Exception as e:
             self.finished.emit(False, str(e))
 
+# === App 更新下载 Worker (已修复) ===
 class AppUpdateWorker(QObject):
-    finished = pyqtSignal()
+    update_ready = pyqtSignal(str) 
+    progress = pyqtSignal(int, str)
+    error = pyqtSignal(str)
+    finished = pyqtSignal() # [修复] 补上缺失的信号
 
-    def __init__(self, updater_inst, files_to_update):
+    def __init__(self, updater_inst, download_info, cancel_callback=None):
         super().__init__()
         self.updater = updater_inst
-        self.files = files_to_update
+        self.info = download_info
+        self.cancel_callback = cancel_callback
 
     @pyqtSlot()
     def run(self):
-        self.updater.perform_update_process(self.files)
-        self.finished.emit()
+        def callback(p, m):
+            self.progress.emit(p, m)
+            
+        try:
+            # 传入取消检查函数
+            new_path = self.updater.perform_update_process(
+                self.info, 
+                progress_callback=callback,
+                cancel_callback=self.cancel_callback
+            )
+            self.update_ready.emit(new_path)
+        except Exception as e:
+            # 如果是用户取消，通常抛出特定异常，这里统一当作错误处理或忽略
+            # 如果是 "用户取消" 异常，前端可以选择不弹错误框
+            self.error.emit(str(e))
+        finally:
+            self.finished.emit()
 
 class SettingsPage(ScrollArea):
     request_sksp_download = pyqtSignal()
@@ -76,25 +92,25 @@ class SettingsPage(ScrollArea):
         self.scrollWidget = QWidget()
         self.expandLayout = QVBoxLayout(self.scrollWidget)
         self.settings = self.controller.backend.settings
+        self.ui_utils = ui_utils.UIUtils()
         
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.enableTransparentBackground()
         
-        # 线程与Worker引用保持 (防止GC回收)
+        # 线程引用
         self.sksp_check_thread = None
         self.sksp_check_worker = None
-        
         self.sksp_dl_thread = None
         self.sksp_dl_worker = None
         
         self.app_check_thread = None
-        
-        self.app_exec_thread = None
-        self.app_exec_worker = None
+        self.app_dl_thread = None
+        self.app_dl_worker = None
         
         self.sksp_dialog = None
+        self.update_dialog = None
         
         self.request_sksp_download.connect(self.start_sksp_download)
         
@@ -145,6 +161,10 @@ class SettingsPage(ScrollArea):
         bottom_layout.addWidget(reset_btn)
 
         self.expandLayout.addWidget(self.bottom_widget)
+
+        self.expandLayout.addSpacing(SPACING["large"])
+        self.expandLayout.addWidget(self.ui_utils.create_footer())
+        self.expandLayout.addSpacing(SPACING["small"])
 
         for card in self.findChildren(SettingCard):
             card.setIconSize(18, 18)
@@ -209,6 +229,7 @@ class SettingsPage(ScrollArea):
         group.addSettingCard(self.auto_sksp_card)
         return group
 
+    # === SKSP 逻辑 ===
     def refresh_sksp_status(self):
         if hasattr(self.controller.backend, 'o'):
             exists, version = self.controller.backend.o.check_sksp_status()
@@ -220,16 +241,13 @@ class SettingsPage(ScrollArea):
         self.update_sksp_btn.setText("检查中...")
         
         self.sksp_check_thread = QThread()
-        # [修复] 赋值给 self.sksp_check_worker，防止被 GC
         self.sksp_check_worker = SKSPCheckWorker(self.controller.backend)
         self.sksp_check_worker.moveToThread(self.sksp_check_thread)
-        
         self.sksp_check_thread.started.connect(self.sksp_check_worker.run)
         self.sksp_check_worker.finished.connect(self.on_sksp_check_finished)
         self.sksp_check_worker.finished.connect(self.sksp_check_thread.quit)
-        self.sksp_check_worker.finished.connect(self.sksp_check_worker.deleteLater)
+        self.sksp_check_thread.finished.connect(self.sksp_check_worker.deleteLater)
         self.sksp_check_thread.finished.connect(self._cleanup_sksp_check)
-        
         self.sksp_check_thread.start()
 
     def _cleanup_sksp_check(self):
@@ -242,7 +260,6 @@ class SettingsPage(ScrollArea):
     def on_sksp_check_finished(self, has_update, info):
         self.update_sksp_btn.setText("检查更新")
         self.update_sksp_btn.setEnabled(True)
-        
         if has_update:
             self.update_sksp_btn.setText("更新")
             content = "发现 SKSP 新版本: {} ({})\n\n是否立即更新？".format(info.get('version'), info.get('release_date'))
@@ -261,19 +278,15 @@ class SettingsPage(ScrollArea):
         self.sksp_dl_thread = QThread()
         self.sksp_dl_worker = SKSPDownloadWorker(self.controller.backend, self.sksp_dialog)
         self.sksp_dl_worker.moveToThread(self.sksp_dl_thread)
-        
         self.sksp_dl_thread.started.connect(self.sksp_dl_worker.run)
         self.sksp_dl_worker.finished.connect(self.on_sksp_update_finished)
         self.sksp_dl_worker.finished.connect(self.sksp_dl_thread.quit)
-        self.sksp_dl_worker.finished.connect(self.sksp_dl_worker.deleteLater)
+        self.sksp_dl_thread.finished.connect(self.sksp_dl_worker.deleteLater)
         self.sksp_dl_thread.finished.connect(self._cleanup_sksp_dl)
-        
         self.sksp_dl_thread.start()
 
     def _cleanup_sksp_dl(self):
-        if self.sksp_dl_thread:
-            self.sksp_dl_thread.deleteLater()
-            self.sksp_dl_thread = None
+        self.sksp_dl_thread = None
         self.sksp_dl_worker = None
 
     @pyqtSlot(bool, str)
@@ -289,6 +302,7 @@ class SettingsPage(ScrollArea):
         elif msg != "用户取消":
             show_info("失败", "更新失败: {}".format(msg))
 
+    # === 软件更新部分 ===
     def create_update_settings_group(self):
         group = SettingCardGroup("软件更新", self.scrollWidget)
         
@@ -320,7 +334,6 @@ class SettingsPage(ScrollArea):
     def manual_check_app_update(self):
         self.manual_update_card.setEnabled(False)
         self.manual_update_card.button.setText("正在检查...")
-        self.manual_update_card.setContent("正在从服务器获取信息...")
         
         backend = self.controller.backend
         self.upd_instance = updater.Updater(
@@ -351,10 +364,10 @@ class SettingsPage(ScrollArea):
         
         msg = f"""
 <h3>发现新版本 v{info['version']}</h3>
-<p><b>发布日期:</b> {info['date']}</p>
+<p><b>发布日期:</b> {info.get('date', '未知')}</p>
 <hr>
 <b>更新日志:</b><br>
-{info['changelog']}
+{info.get('changelog', '无更新日志')}
 <br><br>
 是否立即下载并安装？<br>程序将在下载完成后重启。
 """
@@ -376,23 +389,47 @@ class SettingsPage(ScrollArea):
         self.manual_update_card.button.setText("下载中...")
         self.controller.update_status("正在下载更新，请勿关闭...", "INFO")
         
-        self.app_exec_thread = QThread()
-        # [修复] 赋值给 self.app_exec_worker
-        self.app_exec_worker = AppUpdateWorker(self.upd_instance, info)
-        self.app_exec_worker.moveToThread(self.app_exec_thread)
+        self.update_dialog = show_download_dialog()
+        # 这里不需要 update_dialog.show()，因为 show_download_dialog 内部通常已经 exec 或者 show 了
+        # 如果 show_download_dialog 是非模态的，可以保留 show()。假设它是 CustomDialogs 里的非模态。
         
-        self.app_exec_thread.started.connect(self.app_exec_worker.run)
-        self.app_exec_worker.finished.connect(self.app_exec_thread.quit)
-        self.app_exec_worker.finished.connect(self.app_exec_worker.deleteLater)
-        self.app_exec_thread.finished.connect(self._cleanup_app_exec_thread)
+        self.app_dl_thread = QThread()
+        # 传递取消回调 self.update_dialog.is_canceled
+        self.app_dl_worker = AppUpdateWorker(self.upd_instance, info, cancel_callback=self.update_dialog.is_canceled)
+        self.app_dl_worker.moveToThread(self.app_dl_thread)
         
-        self.app_exec_thread.start()
+        self.app_dl_thread.started.connect(self.app_dl_worker.run)
+        self.app_dl_worker.progress.connect(self.update_dialog.update_progress)
+        self.app_dl_worker.error.connect(self._on_app_download_error)
+        self.app_dl_worker.update_ready.connect(self._on_app_download_success)
+        
+        self.app_dl_worker.finished.connect(self.app_dl_thread.quit)
+        self.app_dl_thread.finished.connect(self._cleanup_app_dl)
+        self.app_dl_thread.finished.connect(self.app_dl_worker.deleteLater)
+        self.app_dl_thread.finished.connect(self.app_dl_thread.deleteLater)
+        
+        self.app_dl_thread.start()
 
-    def _cleanup_app_exec_thread(self):
-        if self.app_exec_thread:
-            self.app_exec_thread.deleteLater()
-            self.app_exec_thread = None
-        self.app_exec_worker = None
+    def _on_app_download_success(self, new_path):
+        if self.update_dialog:
+            self.update_dialog.close()
+        show_info("更新成功", "新版本下载解压完成。\n\n点击确定后程序将自动重启以完成安装。")
+        self.upd_instance.finalize_update(new_path)
+
+    def _on_app_download_error(self, err_msg):
+        if self.update_dialog:
+            self.update_dialog.close()
+        
+        # 如果是“用户取消”，则不弹报错框
+        if "用户取消" not in str(err_msg):
+            show_info("更新失败", f"错误详情: {err_msg}")
+
+    def _cleanup_app_dl(self):
+        self.app_dl_thread = None
+        self.app_dl_worker = None
+        if self.update_dialog:
+            self.update_dialog.close()
+            self.update_dialog = None
         self.manual_update_card.setEnabled(True)
         self.manual_update_card.button.setText("检查更新")
 

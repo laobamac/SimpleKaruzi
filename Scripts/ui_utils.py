@@ -1,6 +1,6 @@
 from typing import Optional, Tuple, TYPE_CHECKING
 
-from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QFrame
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from qfluentwidgets import FluentIcon, BodyLabel, CardWidget, StrongBodyLabel, isDarkTheme, themeColor, qconfig
@@ -9,6 +9,66 @@ from .styles import SPACING, COLORS, RADIUS
 
 if TYPE_CHECKING:
     from qfluentwidgets import GroupHeaderCardWidget, CardGroupWidget
+
+class FooterWidget(QWidget):
+    """
+    一个独立的页脚组件，显示版权和协议信息。
+    自动监听主题切换并更新链接颜色。
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(4)
+        
+        # 版权信息
+        self.footer_label = BodyLabel(
+            "Author: <a href='https://github.com/laobamac' style='text-decoration: none;'>laobamac</a> | "
+            "Project: <a href='https://github.com/laobamac/SimpleKaruzi' style='text-decoration: none;'>SimpleKaruzi</a>"
+        )
+        self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.footer_label.setOpenExternalLinks(True)
+        
+        # 协议信息
+        self.license_label = BodyLabel(
+            "Licensed under <a href='https://github.com/laobamac/SimpleKaruzi/blob/main/LICENSE' style='text-decoration: none;'>AGPL-3.0 License</a>"
+        )
+        self.license_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.license_label.setOpenExternalLinks(True)
+        
+        self.layout.addWidget(self.footer_label)
+        self.layout.addWidget(self.license_label)
+        
+        # 初始化样式并监听主题变化
+        self.update_style()
+        qconfig.themeChanged.connect(self.update_style)
+
+    def update_style(self):
+        """根据主题自动更新页脚文字颜色"""
+        is_dark = isDarkTheme()
+        
+        if is_dark:
+            footer_text_color = "#888888"
+            footer_link_color = "#4CC2FF"
+        else:
+            footer_text_color = "#707070"
+            footer_link_color = "#0078D4"
+
+        footer_qss = f"""
+            QLabel {{
+                font-size: 12px;
+                color: {footer_text_color};
+            }}
+            QLabel a {{
+                color: {footer_link_color};
+                text-decoration: none;
+            }}
+            QLabel a:hover {{
+                text-decoration: underline;
+            }}
+        """
+        self.footer_label.setStyleSheet(footer_qss)
+        self.license_label.setStyleSheet(footer_qss)
 
 class ProgressStatusHelper:
     def __init__(self, status_icon_label, progress_label, progress_bar, progress_container):
@@ -87,10 +147,8 @@ class ThemeAwareCardWidget(CardWidget):
         # 初始化 UI 结构
         self._init_layout()
         
-        # 初始应用样式
         self.update_style()
         
-        # 连接主题变更信号
         qconfig.themeChanged.connect(self.update_style)
 
     def _init_layout(self):
@@ -98,7 +156,6 @@ class ThemeAwareCardWidget(CardWidget):
         self.main_layout.setContentsMargins(SPACING["large"], SPACING["large"], SPACING["large"], SPACING["large"])
         self.main_layout.setSpacing(SPACING["large"])
         
-        # 图标 Label (占位，稍后在 update_style 中设置内容)
         self.icon_label = QLabel()
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.icon_label.setFixedSize(52, 52) # 40 + 12
@@ -128,7 +185,6 @@ class ThemeAwareCardWidget(CardWidget):
         """根据当前主题刷新样式表和图标"""
         is_dark = isDarkTheme()
         
-        # 样式定义
         if is_dark:
             card_styles = {
                 "note":    {"bg": "rgba(0, 120, 212, 0.08)", "text": "#4CC2FF", "body": "#E0E0E0", "border": "rgba(0, 120, 212, 0.3)",  "icon": FluentIcon.INFO},
@@ -149,7 +205,6 @@ class ThemeAwareCardWidget(CardWidget):
         style = card_styles.get(self.card_type, card_styles["note"])
         icon_to_use = self.target_icon if self.target_icon else style["icon"]
 
-        # 1. 更新卡片背景和边框
         self.setStyleSheet(f"""
             ThemeAwareCardWidget {{
                 background-color: {style["bg"]};
@@ -158,10 +213,8 @@ class ThemeAwareCardWidget(CardWidget):
             }}
         """)
 
-        # 2. 更新图标
         self.icon_label.setPixmap(icon_to_use.icon(color=style["text"]).pixmap(40, 40))
 
-        # 3. 更新文字颜色
         if self.title_label:
             self.title_label.setStyleSheet(f"color: {style['text']}; font-size: 16px; background-color: transparent;")
         
@@ -235,3 +288,6 @@ class UIUtils:
     def custom_card(self, card_type: str = "note", icon: Optional[FluentIcon] = None, title: str = "", body: str = "", custom_widget: Optional[QWidget] = None, parent: Optional[QWidget] = None) -> CardWidget:
         # 使用新的 ThemeAwareCardWidget 替代原始 CardWidget
         return ThemeAwareCardWidget(card_type, icon, title, body, custom_widget, self, parent)
+
+    def create_footer(self):
+        return FooterWidget()

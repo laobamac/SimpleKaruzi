@@ -171,6 +171,9 @@ class ConfigurationPage(ScrollArea):
 
         self.expandLayout.addStretch()
 
+        self.expandLayout.addWidget(self.ui_utils.create_footer())
+        self.expandLayout.addSpacing(SPACING["small"])
+
     def _update_status_card(self):
         if self.status_card is not None:
             self.expandLayout.removeWidget(self.status_card)

@@ -446,7 +446,8 @@ class ConfigProdigy:
         boot_args = [
             "-v",
             "debug=0x100",
-            "keepsyms=1"
+            "keepsyms=1",
+            "ipc_control_port_options=0"
         ]
 
         if needs_oclp and self.utils.parse_darwin_version(macos_version) >= self.utils.parse_darwin_version("25.0.0"):
@@ -471,7 +472,7 @@ class ConfigProdigy:
                 if  "Intel" in hardware_report.get("CPU").get("Manufacturer") and \
                     "Integrated GPU" in list(hardware_report.get("GPU").items())[-1][-1].get("Device Type"):
                     intergrated_gpu = list(hardware_report.get("GPU").items())[-1]
-                    if intergrated_gpu[-1].get("OCLP Compatibility"):
+                    if intergrated_gpu[-1].get("OCLP Compatibility") and not "ipc_control_port_options=0" in boot_args:
                         boot_args.append("ipc_control_port_options=0")
 
                     if "Ice Lake" in intergrated_gpu[-1].get("Codename"):

@@ -13,7 +13,6 @@ from qfluentwidgets import (
 from Scripts.styles import COLORS, SPACING
 from Scripts import ui_utils
 
-# === 公告获取线程 ===
 class NoticeWorker(QObject):
     finished = pyqtSignal(dict) # 返回 json 数据
 
@@ -85,9 +84,8 @@ class HomePage(ScrollArea):
         self.expandLayout.addWidget(self._create_guide_card())
 
         self.expandLayout.addStretch()
-        
-        # === 版权信息 ===
-        self.expandLayout.addWidget(self._create_footer())
+
+        self.expandLayout.addWidget(self.ui_utils.create_footer())
         self.expandLayout.addSpacing(SPACING["small"])
 
     def _create_title_label(self):
@@ -128,7 +126,7 @@ class HomePage(ScrollArea):
 
         # === 图标部分 ===
         icon_label = QLabel()
-        icon_path = "icon.png"
+        icon_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) + "/icon.png"
         
         if os.path.exists(icon_path):
             pixmap = QPixmap(icon_path)
@@ -300,45 +298,17 @@ class HomePage(ScrollArea):
         divider.setProperty("class", "divider")
         return divider
 
-    def _create_footer(self):
-        footer_widget = QWidget()
-        layout = QVBoxLayout(footer_widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
-        
-        self.footer_label = BodyLabel(
-            "Author: <a href='https://github.com/laobamac' style='text-decoration: none;'>laobamac</a> | "
-            "Project: <a href='https://github.com/laobamac/SimpleKaruzi' style='text-decoration: none;'>SimpleKaruzi</a>"
-        )
-        self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.footer_label.setOpenExternalLinks(True)
-        
-        self.license_label = BodyLabel(
-            "Licensed under <a href='https://github.com/laobamac/SimpleKaruzi/blob/main/LICENSE' style='text-decoration: none;'>AGPL-3.0 License</a>"
-        )
-        self.license_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.license_label.setOpenExternalLinks(True)
-        
-        layout.addWidget(self.footer_label)
-        layout.addWidget(self.license_label)
-        
-        return footer_widget
-
     def update_style(self):
         is_dark = isDarkTheme()
         
         if is_dark:
             primary_text = "#ffffff"
             secondary_text = "#d2d2d2"
-            footer_text_color = "#888888"
-            footer_link_color = "#4CC2FF"
             theme_color = themeColor().name()
             divider_color = "rgba(255, 255, 255, 0.1)"
         else:
             primary_text = "#000000"
             secondary_text = "#605E5C"
-            footer_text_color = "#707070"
-            footer_link_color = "#0078D4"
             theme_color = themeColor().name()
             divider_color = "#E0E0E0"
 
@@ -356,22 +326,6 @@ class HomePage(ScrollArea):
         for divider in self.findChildren(QFrame):
             if divider.property("class") == "divider":
                 divider.setStyleSheet(f"color: {divider_color};")
-
-        footer_qss = f"""
-            QLabel {{
-                font-size: 12px;
-                color: {footer_text_color};
-            }}
-            QLabel a {{
-                color: {footer_link_color};
-                text-decoration: none;
-            }}
-            QLabel a:hover {{
-                text-decoration: underline;
-            }}
-        """
-        self.footer_label.setStyleSheet(footer_qss)
-        self.license_label.setStyleSheet(footer_qss)
 
     def refresh(self):
         pass

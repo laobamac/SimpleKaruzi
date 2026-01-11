@@ -17,10 +17,6 @@ CURRENT_VERSION = "1.0.0"
 UPDATE_JSON_URL = "https://next.oclpapi.simplehac.cn/SKSP/update.json"
 
 def version_compare(remote_ver, local_ver):
-    """
-    比较版本号
-    返回 True 如果 remote > local
-    """
     try:
         v1 = [int(x) for x in remote_ver.strip().lstrip("v").split(".")]
         v2 = [int(x) for x in local_ver.strip().lstrip("v").split(".")]
@@ -41,17 +37,14 @@ class Updater(QObject):
         self.auto_check_thread = None
 
     def _get_app_path(self):
-        """获取当前运行的程序路径"""
         if self.is_frozen:
             return sys.executable
         return sys.argv[0]
 
     def create_checker_thread(self):
-        """创建检查更新的线程"""
         return UpdateCheckerThread(self)
 
     def fetch_update_info(self):
-        """获取并解析远程 update.json"""
         try:
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
@@ -65,14 +58,23 @@ class Updater(QObject):
             self.u.log_message(f"[更新] 获取更新信息失败: {e}", level="ERROR")
             return None
 
-    def perform_update_process(self, download_info):
-        """
-        主更新流程：下载 -> 解压 -> 生成脚本 -> 退出并替换
-        """
+    def _fix_permissions(self, path):
+        if platform.system() == "Darwin" or platform.system() == "Linux":
+            try:
+                subprocess.run(['chmod', '-R', '755', path], check=False)
+            except Exception as e:
+                pass
+
+    def perform_update_process(self, download_info, progress_callback=None, cancel_callback=None):
+        def report(percent, message):
+            if progress_callback:
+                progress_callback(percent, message)
+            if percent % 10 == 0:
+                self.u.log_message(f"[更新] {message}", level="INFO")
+
         url = download_info.get("url")
         if not url:
-            self.u.log_message("[更新] 错误：下载地址无效", level="ERROR")
-            return
+            raise Exception("下载地址无效")
 
         temp_dir = os.path.join(tempfile.gettempdir(), "SimpleKaruzi_Update")
         if os.path.exists(temp_dir):
@@ -81,53 +83,77 @@ class Updater(QObject):
         
         zip_path = os.path.join(temp_dir, "update_pkg.zip")
         
-        dialog = show_update_dialog("正在更新", "正在连接服务器...")
-        dialog.show()
-        
-        self.u.log_message(f"[更新] 开始下载: {url}", level="INFO")
-        dialog.update_progress(10, "正在下载更新包...")
-        
-        if not self.fetcher.download_and_save_file(url, zip_path):
-            dialog.close()
-            self.u.log_message("[更新] 下载失败，请检查网络。", level="ERROR")
-            show_info("更新失败", "下载失败，请检查网络连接。")
-            return
+        # 1. 下载
+        report(0, "准备下载...")
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(url, headers={'User-Agent': 'SimpleKaruzi-Updater'})
+            
+            with urllib.request.urlopen(req, context=ctx, timeout=30) as response:
+                total_size = int(response.info().get('Content-Length', 0))
+                downloaded_size = 0
+                chunk_size = 8192 * 4
+                start_time = time.time()
+                
+                with open(zip_path, 'wb') as out_file:
+                    while True:
+                        if cancel_callback and cancel_callback():
+                            raise Exception("用户取消")
 
-        dialog.update_progress(50, "正在解压...")
+                        chunk = response.read(chunk_size)
+                        if not chunk:
+                            break
+                        out_file.write(chunk)
+                        downloaded_size += len(chunk)
+                        
+                        percent = int(downloaded_size * 100 / total_size) if total_size > 0 else 0
+                        elapsed = time.time() - start_time
+                        speed = downloaded_size / (elapsed if elapsed > 0 else 1) / 1024 / 1024
+                        
+                        report(percent, f"下载中... {speed:.2f} MB/s")
+        except Exception as e:
+            raise e
+
+        # 2. 解压
+        if cancel_callback and cancel_callback():
+            raise Exception("用户取消")
+            
+        report(95, "正在解压...")
         extract_dir = os.path.join(temp_dir, "extracted")
         try:
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
         except Exception as e:
-            dialog.close()
-            self.u.log_message(f"[更新] 解压失败: {e}", level="ERROR")
-            show_info("更新失败", f"解压失败: {e}")
-            return
+            raise Exception(f"解压失败: {e}")
         
+        # 3. 查找文件
         new_app_path = self._find_new_executable(extract_dir)
         if not new_app_path:
-            dialog.close()
-            self.u.log_message("[更新] 错误：在更新包中未找到可执行文件。", level="ERROR")
-            show_info("更新失败", "更新包内容异常：未找到可执行文件。")
-            return
+            raise Exception("未找到 SimpleKaruzi.app 或 .exe")
 
-        dialog.update_progress(90, "准备重启安装...")
-        self.u.log_message(f"[更新] 准备安装新版本: {new_app_path}", level="INFO")
+        self._fix_permissions(new_app_path)
+        report(100, "准备就绪")
         
-        time.sleep(1)
-        dialog.close()
+        return new_app_path
 
+    def finalize_update(self, new_app_path):
+        self.u.log_message(f"[更新] 正在执行最终替换流程: {new_app_path}", level="INFO")
         self._execute_replacement_script(new_app_path)
 
     def _find_new_executable(self, extract_dir):
         system = platform.system()
-        target_name = "SimpleKaruzi.exe" if system == "Windows" else "SimpleKaruzi.app"
+        target_name_lower = "simplekaruzi.exe" if system == "Windows" else "simplekaruzi.app"
         
         for root, dirs, files in os.walk(extract_dir):
-            if system == "Windows" and target_name in files:
-                return os.path.join(root, target_name)
-            if system == "Darwin" and target_name in dirs:
-                return os.path.join(root, target_name)
+            if "__MACOSX" in root: continue
+            if system == "Windows":
+                for f in files:
+                    if f.lower() == target_name_lower: return os.path.join(root, f)
+            elif system == "Darwin":
+                for d in dirs:
+                    if d.lower() == target_name_lower: return os.path.join(root, d)
         return None
 
     def _execute_replacement_script(self, new_file_path):
@@ -141,102 +167,92 @@ class Updater(QObject):
         if not self.is_frozen:
             self.u.open_folder(os.path.dirname(new_exe))
             return
-
         script_path = os.path.join(os.path.dirname(self.app_path), "updater.bat")
-        batch_content = f"""
-@echo off
+        batch_content = f"""@echo off
 timeout /t 3 /nobreak > NUL
 echo Updating SimpleKaruzi...
-move /y "{new_exe}" "{self.app_path}"
-if %errorlevel% neq 0 (
-    echo Update failed.
-    pause
-    exit
-)
+copy /y "{new_exe}" "{self.app_path}"
 start "" "{self.app_path}"
 del "%~f0"
 """
-        try:
-            with open(script_path, "w", encoding="gbk") as f:
-                f.write(batch_content)
-            subprocess.Popen([script_path], shell=True)
-            sys.exit(0)
-        except Exception as e:
-            self.u.log_message(f"[更新] 无法创建更新脚本: {e}", level="ERROR")
+        with open(script_path, "w", encoding="gbk") as f: f.write(batch_content)
+        subprocess.Popen([script_path], shell=True)
+        os._exit(0)
 
     def _macos_update_script(self, new_app):
         if not self.is_frozen:
             self.u.open_folder(os.path.dirname(new_app))
             return
-
+        
         script_path = os.path.join(tempfile.gettempdir(), "sk_update.sh")
         current_app_bundle = self.app_path
-        while "/Contents/MacOS" in current_app_bundle:
-            current_app_bundle = os.path.dirname(current_app_bundle)
-        if current_app_bundle.endswith("/Contents"):
+        
+        while len(current_app_bundle) > 1 and not current_app_bundle.endswith(".app"):
             current_app_bundle = os.path.dirname(current_app_bundle)
             
+        # [修复重点] 获取当前 GUI 用户，确保以用户身份运行 open，而不是 Root
         sh_content = f"""#!/bin/bash
+# 等待主程序退出
 sleep 2
+
+# 替换文件
 rm -rf "{current_app_bundle}"
 mv "{new_app}" "{current_app_bundle}"
+
+# 修复权限和隔离属性
+chmod -R 755 "{current_app_bundle}"
 xattr -cr "{current_app_bundle}"
-open "{current_app_bundle}"
+
+# 获取当前登录的 GUI 用户名 (Console Owner)
+REAL_USER=$(stat -f%Su /dev/console)
+
+# 稍微等待文件系统刷新
+sleep 1
+
+# 以当前用户身份打开新 App
+sudo -u "$REAL_USER" open "{current_app_bundle}"
+
+# 删除脚本自身
 rm "$0"
 """
         try:
-            with open(script_path, "w") as f:
-                f.write(sh_content)
+            with open(script_path, "w") as f: f.write(sh_content)
             os.chmod(script_path, 0o755)
-            subprocess.Popen(["/bin/bash", script_path])
-            sys.exit(0)
+            
+            # 后台运行，避免阻塞主程序退出
+            apple_script = f'do shell script "bash \\"{script_path}\\" &> /dev/null &" with administrator privileges'
+            
+            subprocess.Popen(
+                ['osascript', '-e', apple_script], 
+                stdout=subprocess.DEVNULL, 
+                stderr=subprocess.DEVNULL
+            )
+            
+            time.sleep(0.5)
+            os._exit(0)
         except Exception as e:
-            self.u.log_message(f"[更新] 无法创建更新脚本: {e}", level="ERROR")
+            self.u.log_message(f"[更新] 启动脚本失败: {e}", level="ERROR")
 
     def run_update(self):
-        """
-        启动时自动检查更新的入口方法。
-        修复了崩溃问题：将线程保存在 self.auto_check_thread 中。
-        """
-        if self.auto_check_thread is not None and self.auto_check_thread.isRunning():
-            return
-
+        if self.auto_check_thread is not None and self.auto_check_thread.isRunning(): return
         self.auto_check_thread = self.create_checker_thread()
-        
-        # 连接信号
         self.auto_check_thread.update_available.connect(self._on_auto_update_available)
-        self.auto_check_thread.check_failed.connect(self._on_auto_check_finished)
-        self.auto_check_thread.no_update.connect(self._on_auto_check_finished)
-        self.auto_check_thread.finished.connect(self._cleanup_auto_thread)
-        
+        self.auto_check_thread.check_failed.connect(lambda e: self._cleanup_auto_check())
+        self.auto_check_thread.no_update.connect(lambda: self._cleanup_auto_check())
+        self.auto_check_thread.finished.connect(self._cleanup_auto_check)
         self.auto_check_thread.start()
 
-    def _on_auto_update_available(self, info):
-        # 自动检查发现更新，弹出提示
-        msg = f"""
-<h3>发现新版本 v{info['version']}</h3>
-<p><b>发布日期:</b> {info.get('date', '未知')}</p>
-<hr>
-<b>更新日志:</b><br>
-{info.get('changelog', '无更新日志')}
-<br><br>
-是否立即下载并安装？<br>程序将在下载完成后重启。
-"""
-        if show_confirmation("发现更新", msg):
-            self.perform_update_process(info)
-
-    def _on_auto_check_finished(self, msg=None):
-        if msg:
-            self.u.log_message(f"[自动更新] 检查结束: {msg}", level="INFO")
-
-    def _cleanup_auto_thread(self):
+    def _cleanup_auto_check(self):
         if self.auto_check_thread:
             self.auto_check_thread.deleteLater()
             self.auto_check_thread = None
 
+    def _on_auto_update_available(self, info):
+        msg = f"发现新版本 v{info['version']}。\n请前往【设置 -> 软件更新】进行下载。"
+        if show_confirmation("发现更新", msg, yes_text="知道了", no_text="关闭"): pass
 
 class UpdateCheckerThread(QThread):
-    update_available = pyqtSignal(dict) # {version, url, notes, date}
+    update_available = pyqtSignal(dict)
     no_update = pyqtSignal()
     check_failed = pyqtSignal(str)
 
@@ -247,34 +263,24 @@ class UpdateCheckerThread(QThread):
     def run(self):
         try:
             data = self.updater.fetch_update_info()
-            
             if not data:
-                self.check_failed.emit("无法连接到服务器获取更新信息")
+                self.check_failed.emit("无法连接到服务器")
                 return
-
             remote_version = data.get("version", "0.0.0")
-
             if version_compare(remote_version, CURRENT_VERSION):
                 downloads = data.get("downloads", {})
-                system = platform.system()
-                
-                target_url = None
-                if system == "Windows":
-                    target_url = downloads.get("win")
-                elif system == "Darwin":
-                    target_url = downloads.get("mac")
-                
-                if target_url:
+                sys_key = "win" if platform.system() == "Windows" else "mac"
+                url = downloads.get(sys_key)
+                if url:
                     self.update_available.emit({
                         "version": remote_version,
-                        "url": target_url,
-                        "date": data.get("date", "Unknown"),
-                        "changelog": data.get("changelog", "无更新日志")
+                        "url": url,
+                        "date": data.get("date", "未知"),
+                        "changelog": data.get("changelog", "无日志")
                     })
                 else:
-                    self.check_failed.emit(f"发现新版本 {remote_version}，但未找到适用于 {system} 的下载链接。")
+                    self.check_failed.emit("未找到当前系统的下载链接")
             else:
                 self.no_update.emit()
-                
         except Exception as e:
             self.check_failed.emit(str(e))

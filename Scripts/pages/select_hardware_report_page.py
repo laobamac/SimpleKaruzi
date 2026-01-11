@@ -135,6 +135,9 @@ class SelectHardwareReportPage(QWidget):
 
         self.main_layout.addStretch()
 
+        self.main_layout.addWidget(self.ui_utils.create_footer())
+        self.main_layout.addSpacing(SPACING["small"])
+
     def create_instructions_card(self):
         card = self.ui_utils.custom_card(
             card_type="note",

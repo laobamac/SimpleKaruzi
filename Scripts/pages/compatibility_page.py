@@ -127,6 +127,9 @@ class CompatibilityPage(ScrollArea):
 
         self._show_placeholder()
 
+        self.expandLayout.addWidget(self.ui_utils.create_footer())
+        self.expandLayout.addSpacing(SPACING["small"])
+
     def _on_detail_switch_changed(self, checked):
         self.show_details = checked
         self.update_display()

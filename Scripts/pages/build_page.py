@@ -186,6 +186,9 @@ class BuildPage(ScrollArea):
 
         self.expandLayout.addStretch()
 
+        self.expandLayout.addWidget(self.ui_utils.create_footer())
+        self.expandLayout.addSpacing(SPACING["small"])
+
     def _connect_signals(self):
         self.build_progress_signal.connect(self._handle_build_progress)
         self.build_complete_signal.connect(self._handle_build_complete)

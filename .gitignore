@@ -167,3 +167,4 @@ settings.json
 config/
 convert_to_icns.sh
 icon.*
+build.sh
