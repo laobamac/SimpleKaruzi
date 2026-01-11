@@ -551,7 +551,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "CpuPlugA", 0x00003000)
             return {
                 "Add": [
                     {
-                        "Comment": ssdt_name + ".aml",
+                        "Comment": ssdt_name + ".aml | SimpleKaruzi",
                         "Enabled": self.write_ssdt(ssdt_name, ssdt),
                         "Path": ssdt_name + ".aml"
                     }
@@ -941,7 +941,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "HPET", 0x00000000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -1203,7 +1203,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "RTCAWAC", 0x00000000)
             return {
                 "Add": [
                     {
-                        "Comment": ssdt_name + ".aml",
+                        "Comment": ssdt_name + ".aml | SimpleKaruzi",
                         "Enabled": self.write_ssdt(ssdt_name, ssdt),
                         "Path": ssdt_name + ".aml"
                     }
@@ -1427,7 +1427,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "EC", 0x00001000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt),
                     "Path": ssdt_name + ".aml"
                 }
@@ -1523,7 +1523,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "IMEI", 0x00000000)
             return {
                 "Add": [
                     {
-                        "Comment": ssdt_name + ".aml",
+                        "Comment": ssdt_name + ".aml | SimpleKaruzi",
                         "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                         "Path": ssdt_name + ".aml"
                     }
@@ -1571,7 +1571,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "MCHC", 0)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -1620,7 +1620,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "[[SMBUSName]]", 0)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -1699,7 +1699,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "USBX", 0x00001000)
             return {
                 "Add": [
                     {
-                        "Comment": ssdt_name + ".aml",
+                        "Comment": ssdt_name + ".aml | SimpleKaruzi",
                         "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                         "Path": ssdt_name + ".aml"
                     }
@@ -1791,7 +1791,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "[[ALSName]]", 0x00000000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -2014,7 +2014,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "DNVMe", 0x00000000)
                 
                 results["Add"].append(
                     {
-                        "Comment": ssdt_name + ".aml",
+                        "Comment": ssdt_name + ".aml | SimpleKaruzi",
                         "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                         "Path": ssdt_name + ".aml"
                     }
@@ -2192,7 +2192,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "PNLF", 0x00000000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -2236,7 +2236,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "GPI0", 0x00000000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -2310,7 +2310,7 @@ DefinitionBlock ("", "SSDT", 2, "ACDT", "PMCR", 0x00001000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -2409,7 +2409,7 @@ DefinitionBlock("", "SSDT", 2, "ZPSS", "RMNE", 0x00001000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -2503,7 +2503,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "RtcRange", 0x00000000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -2624,7 +2624,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "_PRW", 0x00000000)
             return {
                 "Add": [
                     {
-                        "Comment": ssdt_name + ".aml",
+                        "Comment": ssdt_name + ".aml | SimpleKaruzi",
                         "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                         "Path": ssdt_name + ".aml"
                     }
@@ -2678,7 +2678,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "UNC", 0x00000000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -2740,7 +2740,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "XOSI", 0x00001000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -2871,7 +2871,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "SURFACE", 0x00001000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -3119,7 +3119,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "UsbReset", 0x00001000)
         return {
             "Add": [
                 {
-                    "Comment": ssdt_name + ".aml",
+                    "Comment": ssdt_name + ".aml | SimpleKaruzi",
                     "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                     "Path": ssdt_name + ".aml"
                 }
@@ -3175,7 +3175,7 @@ DefinitionBlock ("", "SSDT", 2, "ZPSS", "WMIS", 0x00000000)
             return {
                 "Add": [
                     {
-                        "Comment": ssdt_name + ".aml",
+                        "Comment": ssdt_name + ".aml | SimpleKaruzi",
                         "Enabled": self.write_ssdt(ssdt_name, ssdt_content),
                         "Path": ssdt_name + ".aml"
                     }

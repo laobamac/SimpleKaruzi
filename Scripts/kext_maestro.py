@@ -250,7 +250,7 @@ class KextMaestro:
                     if self.utils.parse_darwin_version(macos_version) >= self.utils.parse_darwin_version("25.0.0"):
                         content += (
                             "自 macOS Tahoe 26 起，WhateverGreen 在 AMD {} 显卡上存在已知的接口修补问题。<br>"
-                            "为避免此问题，您可以使用 NootRX 或选择不安装显卡 Kext。"
+                            "为避免此问题，您可以使用 <a href='https://wxcznb.lanzouw.com/iRoL43fsdmre'>laobamac/WhateverGreen</a> 或 NootRX 或选择不安装显卡 Kext。"
                         ).format(gpu_props.get("Codename"))
                         options.append("<b>不使用任何 Kext</b>")
                         recommended_option = 0
@@ -278,7 +278,8 @@ class KextMaestro:
                 if self.utils.parse_darwin_version(macos_version) >= self.utils.parse_darwin_version("25.0.0"):
                     content = (
                         "自 macOS Tahoe 26 起，原版 WhateverGreen 在 AMD 显卡上存在已知的接口修补问题。<br>"
-                        "建议使用 laobamac/WhateverGreen 作为优秀的替代方案。<a href='https://wxcznb.lanzouw.com/iRoL43fsdmre'>点击此处下载</a><br>"
+                        "已默认不添加WhateverGreen，但为了更稳定的Hackintosh建议您手动下载下方驱动并添加启用↓<br>"
+                        "使用 laobamac/WhateverGreen 作为优秀的替代方案。<a href='https://wxcznb.lanzouw.com/iRoL43fsdmre'>点击此处下载</a><br>"
                     )
                     show_info("警告", content)
                     break
@@ -640,7 +641,7 @@ class KextMaestro:
             kernel_add.append({
                 "Arch": "x86_64",
                 "BundlePath": bundle.get("BundlePath"),
-                "Comment": "",
+                "Comment": " | SimpleKaruzi",
                 "Enabled": bundle.get("Enabled"),
                 "ExecutablePath": bundle.get("ExecutablePath"),
                 "MaxKernel": "" if bundle.get("MaxKernel") in latest_darwin_version else bundle.get("MaxKernel"),

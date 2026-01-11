@@ -49,24 +49,26 @@ class OCS(FluentWindow):
         self._setup_backend_handlers()
         self.init_navigation()
         
-        # 启动后延时检查 SKSP
+        # 保存自动更新器的引用，防止被垃圾回收导致崩溃
+        self.startup_updater = None
+        
         QTimer.singleShot(1000, self.check_startup_tasks)
 
     def check_startup_tasks(self):
-
         self.backend.o.check_sksp_on_startup()
-
+        
         if hasattr(self, 'settingsPage'):
             self.settingsPage.refresh_sksp_status()
-
+        
         if self.settings.get_auto_update_check():
-            updater.Updater(
+            self.startup_updater = updater.Updater(
                 utils_instance=self.backend.u,
                 github_instance=self.backend.github,
                 resource_fetcher_instance=self.backend.resource_fetcher,
                 run_instance=self.backend.r,
                 integrity_checker_instance=self.backend.integrity_checker
-            ).run_update()
+            )
+            self.startup_updater.run_update()
 
     def _init_state(self):
         self.hardware_state = HardwareReportState()

@@ -336,13 +336,22 @@ class ConfigProdigy:
         if kexts[kext_data.kext_index_by_name.get("IOSkywalkFamily")].checked:
             kernel_block.append({
                 "Arch": "x86_64",
-                "Comment": "Allow IOSkywalk Downgrade",
+                "Comment": "Allow IOSkywalk Downgrade | SimpleKaruzi",
                 "Enabled": True,
                 "Identifier": "com.apple.iokit.IOSkywalkFamily",
                 "MaxKernel": "",
                 "MinKernel": "23.0.0",
                 "Strategy": "Exclude"
-            })
+            }),
+            kernel_block.append({
+                "Arch": "x86_64",
+                "Comment": "Prevent AppleEthernetRL crush | SimpleKaruzi",
+                "Enabled": True,
+                "Identifier": "com.apple.driver.AppleEthernetRL",
+                "MaxKernel": "",
+                "MinKernel": "25.0.0",
+                "Strategy": "Exclude"
+            }),
         
         return kernel_block
 
@@ -441,7 +450,7 @@ class ConfigProdigy:
         ]
 
         if needs_oclp and self.utils.parse_darwin_version(macos_version) >= self.utils.parse_darwin_version("25.0.0"):
-            boot_args.append("amfi=0x80")
+            boot_args.append("-lilubetaall -amfipassbeta")
 
         if config["Booter"]["Quirks"]["ResizeAppleGpuBars"] != 0 and self.is_intel_hedt_cpu(hardware_report.get("CPU").get("Processor Name"), hardware_report.get("CPU").get("Codename")):
             boot_args.append("npci=0x2000")
@@ -508,7 +517,7 @@ class ConfigProdigy:
     
     def csr_active_config(self, macos_version):
         if self.utils.parse_darwin_version(macos_version) >= self.utils.parse_darwin_version("20.0.0"):
-            return "030A0000"
+            return "03080000"
         elif self.utils.parse_darwin_version(macos_version) >= self.utils.parse_darwin_version("18.0.0"):
             return "FF070000"
         else:
@@ -600,10 +609,13 @@ class ConfigProdigy:
         config["Kernel"]["Quirks"]["LapicKernelPanic"] = "HP " in hardware_report.get("Motherboard").get("Name")
         config["Kernel"]["Quirks"]["PanicNoKextDump"] = config["Kernel"]["Quirks"]["PowerTimeoutKernelPanic"] = True
         config["Kernel"]["Quirks"]["ProvideCurrentCpuInfo"] = "AMD" in hardware_report.get("CPU").get("Manufacturer") or hardware_report.get("CPU").get("Codename") in cpu_data.IntelCPUGenerations[4:20]
+        config["Kernel"]["Quirks"]["XhciPortLimit"] = True
 
         config["Misc"]["BlessOverride"] = []
-        config["Misc"]["Boot"]["HideAuxiliary"] = False
+        config["Misc"]["Boot"]["HideAuxiliary"] = True
         config["Misc"]["Boot"]["PickerMode"] = "Builtin" if hardware_report.get("BIOS").get("Firmware Type") != "UEFI" else "External"
+        config["Misc"]["Boot"]["Timeout"] = 0
+        config["Misc"]["Boot"]["PollAppleHotKeys"] = True
         config["Misc"]["Debug"]["AppleDebug"] = config["Misc"]["Debug"]["ApplePanic"] = False
         config["Misc"]["Debug"]["DisableWatchDog"] = True
         config["Misc"]["Entries"] = []

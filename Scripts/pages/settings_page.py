@@ -13,9 +13,8 @@ from qfluentwidgets import (
 
 from Scripts.custom_dialogs import show_confirmation, show_info, show_download_dialog
 from Scripts.styles import COLORS, SPACING
-import updater  # 导入 updater 以获取版本号和逻辑
+import updater
 
-# === SKSP 检查 Worker ===
 class SKSPCheckWorker(QObject):
     finished = pyqtSignal(bool, dict)
 
@@ -54,7 +53,6 @@ class SKSPDownloadWorker(QObject):
         except Exception as e:
             self.finished.emit(False, str(e))
 
-# === App 更新下载 Worker ===
 class AppUpdateWorker(QObject):
     finished = pyqtSignal()
 
@@ -65,8 +63,6 @@ class AppUpdateWorker(QObject):
 
     @pyqtSlot()
     def run(self):
-        # 调用 updater 执行下载、解压、生成脚本等耗时操作
-        # 注意：这里传入的 self.files 会被新的 perform_update_process 忽略
         self.updater.perform_update_process(self.files)
         self.finished.emit()
 
@@ -86,11 +82,17 @@ class SettingsPage(ScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.enableTransparentBackground()
         
-        # 线程管理
+        # 线程与Worker引用保持 (防止GC回收)
         self.sksp_check_thread = None
+        self.sksp_check_worker = None
+        
         self.sksp_dl_thread = None
+        self.sksp_dl_worker = None
+        
         self.app_check_thread = None
+        
         self.app_exec_thread = None
+        self.app_exec_worker = None
         
         self.sksp_dialog = None
         
@@ -207,7 +209,6 @@ class SettingsPage(ScrollArea):
         group.addSettingCard(self.auto_sksp_card)
         return group
 
-    # === SKSP 逻辑 ===
     def refresh_sksp_status(self):
         if hasattr(self.controller.backend, 'o'):
             exists, version = self.controller.backend.o.check_sksp_status()
@@ -219,32 +220,37 @@ class SettingsPage(ScrollArea):
         self.update_sksp_btn.setText("检查中...")
         
         self.sksp_check_thread = QThread()
-        worker = SKSPCheckWorker(self.controller.backend)
-        worker.moveToThread(self.sksp_check_thread)
-        self.sksp_check_thread.started.connect(worker.run)
-        worker.finished.connect(self.on_sksp_check_finished)
-        worker.finished.connect(self.sksp_check_thread.quit)
-        worker.finished.connect(worker.deleteLater)
+        # [修复] 赋值给 self.sksp_check_worker，防止被 GC
+        self.sksp_check_worker = SKSPCheckWorker(self.controller.backend)
+        self.sksp_check_worker.moveToThread(self.sksp_check_thread)
+        
+        self.sksp_check_thread.started.connect(self.sksp_check_worker.run)
+        self.sksp_check_worker.finished.connect(self.on_sksp_check_finished)
+        self.sksp_check_worker.finished.connect(self.sksp_check_thread.quit)
+        self.sksp_check_worker.finished.connect(self.sksp_check_worker.deleteLater)
         self.sksp_check_thread.finished.connect(self._cleanup_sksp_check)
+        
         self.sksp_check_thread.start()
 
     def _cleanup_sksp_check(self):
         if self.sksp_check_thread:
             self.sksp_check_thread.deleteLater()
             self.sksp_check_thread = None
+        self.sksp_check_worker = None
 
     @pyqtSlot(bool, dict)
     def on_sksp_check_finished(self, has_update, info):
         self.update_sksp_btn.setText("检查更新")
         self.update_sksp_btn.setEnabled(True)
+        
         if has_update:
             self.update_sksp_btn.setText("更新")
             content = "发现 SKSP 新版本: {} ({})\n\n是否立即更新？".format(info.get('version'), info.get('release_date'))
             if show_confirmation("发现新版本", content):
                 self.start_sksp_download()
         else:
-            if "error" in info:
-                show_info("错误", "检查更新失败: {}".format(info["error"]))
+            if "error" in info and info["error"]:
+                show_info("检查失败", "获取更新信息时出错: {}".format(info["error"]))
             else:
                 show_info("已是最新", "当前的 SKSP 资源包已是最新版本。")
 
@@ -253,19 +259,22 @@ class SettingsPage(ScrollArea):
         self.sksp_dialog = show_download_dialog()
         
         self.sksp_dl_thread = QThread()
-        worker = SKSPDownloadWorker(self.controller.backend, self.sksp_dialog)
-        worker.moveToThread(self.sksp_dl_thread)
-        self.sksp_dl_thread.started.connect(worker.run)
-        worker.finished.connect(self.on_sksp_update_finished)
-        worker.finished.connect(self.sksp_dl_thread.quit)
-        worker.finished.connect(worker.deleteLater)
+        self.sksp_dl_worker = SKSPDownloadWorker(self.controller.backend, self.sksp_dialog)
+        self.sksp_dl_worker.moveToThread(self.sksp_dl_thread)
+        
+        self.sksp_dl_thread.started.connect(self.sksp_dl_worker.run)
+        self.sksp_dl_worker.finished.connect(self.on_sksp_update_finished)
+        self.sksp_dl_worker.finished.connect(self.sksp_dl_thread.quit)
+        self.sksp_dl_worker.finished.connect(self.sksp_dl_worker.deleteLater)
         self.sksp_dl_thread.finished.connect(self._cleanup_sksp_dl)
+        
         self.sksp_dl_thread.start()
 
     def _cleanup_sksp_dl(self):
         if self.sksp_dl_thread:
             self.sksp_dl_thread.deleteLater()
             self.sksp_dl_thread = None
+        self.sksp_dl_worker = None
 
     @pyqtSlot(bool, str)
     def on_sksp_update_finished(self, success, msg):
@@ -280,15 +289,13 @@ class SettingsPage(ScrollArea):
         elif msg != "用户取消":
             show_info("失败", "更新失败: {}".format(msg))
 
-    # === 软件更新部分 ===
     def create_update_settings_group(self):
         group = SettingCardGroup("软件更新", self.scrollWidget)
         
-        # 显示当前版本号
-        ver = getattr(updater, 'CURRENT_VERSION', 'Unknown')
+        current_ver = getattr(updater, 'CURRENT_VERSION', 'Unknown')
         self.version_card = SettingCard(
             FluentIcon.INFO,
-            f"当前版本: v{ver}",
+            f"当前版本: v{current_ver}",
             "SimpleKaruzi",
             group
         )
@@ -311,10 +318,9 @@ class SettingsPage(ScrollArea):
         return group
 
     def manual_check_app_update(self):
-        """点击按钮：手动检查更新"""
         self.manual_update_card.setEnabled(False)
         self.manual_update_card.button.setText("正在检查...")
-        self.manual_update_card.setContent("正在比对文件清单...")
+        self.manual_update_card.setContent("正在从服务器获取信息...")
         
         backend = self.controller.backend
         self.upd_instance = updater.Updater(
@@ -325,38 +331,59 @@ class SettingsPage(ScrollArea):
             integrity_checker_instance=backend.integrity_checker
         )
         
-        # 启动 Manifest 检查线程
         self.app_check_thread = self.upd_instance.create_checker_thread()
         self.app_check_thread.update_available.connect(self._on_app_update_available)
         self.app_check_thread.no_update.connect(self._on_app_no_update)
         self.app_check_thread.check_failed.connect(self._on_app_check_failed)
-        self.app_check_thread.finished.connect(self._on_app_check_thread_finished)
+        self.app_check_thread.finished.connect(self._on_app_check_finished)
         self.app_check_thread.start()
 
-    def _on_app_check_thread_finished(self):
+    def _on_app_check_finished(self):
+        self.manual_update_card.setEnabled(True)
+        self.manual_update_card.button.setText("检查更新")
         if self.app_check_thread:
             self.app_check_thread.deleteLater()
             self.app_check_thread = None
 
-    def _on_app_update_available(self, files_to_update):
-        # 当 Manifest 检测到差异时
-        self.manual_update_card.setEnabled(True)
-        self.manual_update_card.button.setText("更新")
-        self.manual_update_card.setContent("发现新版本")
-        self.controller.update_status("检测到新版本", "success")
+    def _on_app_update_available(self, info):
+        self.manual_update_card.setContent(f"发现新版本 v{info['version']}")
+        self.controller.update_status("发现更新", "success")
         
-        # 启动更新执行流程 (在 Worker 中运行以防止 UI 卡顿)
-        self.start_app_execution_process(files_to_update)
+        msg = f"""
+<h3>发现新版本 v{info['version']}</h3>
+<p><b>发布日期:</b> {info['date']}</p>
+<hr>
+<b>更新日志:</b><br>
+{info['changelog']}
+<br><br>
+是否立即下载并安装？<br>程序将在下载完成后重启。
+"""
+        if show_confirmation("发现更新", msg):
+            self.start_app_download_process(info)
 
-    def start_app_execution_process(self, files):
-        # 创建一个 Worker 来执行耗时的下载和解压
-        self.app_exec_thread = QThread()
-        worker = AppUpdateWorker(self.upd_instance, files)
-        worker.moveToThread(self.app_exec_thread)
+    def _on_app_no_update(self):
+        self.manual_update_card.setContent("已是最新")
+        self.controller.update_status("已是最新版本", "success")
+        show_info("检查完成", "当前已是最新版本！")
+
+    def _on_app_check_failed(self, error_msg):
+        self.manual_update_card.setContent("检查失败")
+        self.controller.update_status("更新检查失败", "error")
+        show_info("检查失败", error_msg)
+
+    def start_app_download_process(self, info):
+        self.manual_update_card.setEnabled(False)
+        self.manual_update_card.button.setText("下载中...")
+        self.controller.update_status("正在下载更新，请勿关闭...", "INFO")
         
-        self.app_exec_thread.started.connect(worker.run)
-        worker.finished.connect(self.app_exec_thread.quit)
-        worker.finished.connect(worker.deleteLater)
+        self.app_exec_thread = QThread()
+        # [修复] 赋值给 self.app_exec_worker
+        self.app_exec_worker = AppUpdateWorker(self.upd_instance, info)
+        self.app_exec_worker.moveToThread(self.app_exec_thread)
+        
+        self.app_exec_thread.started.connect(self.app_exec_worker.run)
+        self.app_exec_worker.finished.connect(self.app_exec_thread.quit)
+        self.app_exec_worker.finished.connect(self.app_exec_worker.deleteLater)
         self.app_exec_thread.finished.connect(self._cleanup_app_exec_thread)
         
         self.app_exec_thread.start()
@@ -365,23 +392,9 @@ class SettingsPage(ScrollArea):
         if self.app_exec_thread:
             self.app_exec_thread.deleteLater()
             self.app_exec_thread = None
-        # 如果更新成功，程序会重启；如果用户取消或出错，恢复按钮
+        self.app_exec_worker = None
         self.manual_update_card.setEnabled(True)
         self.manual_update_card.button.setText("检查更新")
-
-    def _on_app_no_update(self):
-        self.manual_update_card.setEnabled(True)
-        self.manual_update_card.button.setText("检查更新")
-        self.manual_update_card.setContent("已是最新")
-        self.controller.update_status("已是最新版本", "success")
-        show_info("检查完成", "当前已是最新版本！")
-
-    def _on_app_check_failed(self, error_msg):
-        self.manual_update_card.setEnabled(True)
-        self.manual_update_card.button.setText("检查更新")
-        self.manual_update_card.setContent("检查失败")
-        self.controller.update_status("更新检查失败", "error")
-        show_info("检查失败", error_msg)
 
     def create_macos_version_group(self):
         group = SettingCardGroup("macOS 版本", self.scrollWidget)
@@ -402,16 +415,12 @@ class SettingsPage(ScrollArea):
         current_setting = self.settings.get("theme")
         display_val = {v: k for k, v in self.theme_map.items()}.get(current_setting, "跟随系统")
         self.theme_config = OptionsConfigItem("Appearance", "Theme", display_val, OptionsValidator(theme_items))
-        
         def on_theme_changed(val):
             internal = self.theme_map.get(val, "Auto")
             self.settings.set("theme", internal)
             setTheme(Theme.DARK if internal == "Dark" else Theme.LIGHT if internal == "Light" else Theme.AUTO)
-
         self.theme_config.valueChanged.connect(on_theme_changed)
-        self.theme_card = ComboBoxSettingCard(
-            self.theme_config, FluentIcon.BRUSH, "主题", "选择应用程序的颜色主题。", theme_items, group
-        )
+        self.theme_card = ComboBoxSettingCard(self.theme_config, FluentIcon.BRUSH, "主题", "选择应用程序的颜色主题。", theme_items, group)
         self.theme_card.setObjectName("theme")
         group.addSettingCard(self.theme_card)
         return group
