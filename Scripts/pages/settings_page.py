@@ -220,7 +220,7 @@ class SettingsPage(ScrollArea):
         group.addSettingCard(self.sksp_status_card)
         
         self.auto_sksp_card = SwitchSettingCard(
-            FluentIcon.SYNC, "自动检查更新", "在生成 EFI 时自动检查资源包更新。",
+            FluentIcon.SYNC, "自动检查更新", "在软件启动时自动检查资源包更新。",
             configItem=None, parent=group
         )
         self.auto_sksp_card.setObjectName("auto_check_sksp_updates")

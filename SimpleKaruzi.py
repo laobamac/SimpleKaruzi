@@ -2,8 +2,9 @@ import os
 import sys
 import platform
 import traceback
+import shutil
 
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QObject, QThread, pyqtSlot
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication
 from qfluentwidgets import (
@@ -21,12 +22,32 @@ from Scripts.state import HardwareReportState, macOSVersionState, SMBIOSState, B
 from Scripts.pages import HomePage, SelectHardwareReportPage, CompatibilityPage, ConfigurationPage, BuildPage, SettingsPage
 from Scripts.backend import Backend
 from Scripts import ui_utils
-from Scripts.custom_dialogs import set_default_gui_handler
+from Scripts.custom_dialogs import set_default_gui_handler, show_confirmation
 import updater
 
 WINDOW_MIN_SIZE = (1000, 700)
 WINDOW_DEFAULT_SIZE = (1200, 800)
 
+class SKSPStartupWorker(QObject):
+    update_found = pyqtSignal(dict)
+    finished = pyqtSignal()
+
+    def __init__(self, backend):
+        super().__init__()
+        self.backend = backend
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            local_info = self.backend.o.get_local_sksp_info()
+            local_ver = local_info.get("version") if local_info else "0.0.0"
+            remote_info = self.backend.o.fetch_remote_sksp_info()
+            if remote_info and remote_info.get("version") > local_ver:
+                self.update_found.emit(remote_info)
+        except Exception:
+            pass
+        finally:
+            self.finished.emit()
 
 class OCS(FluentWindow):
     open_result_folder_signal = pyqtSignal(str)
@@ -43,16 +64,50 @@ class OCS(FluentWindow):
         self.settings = self.backend.settings
         self.ui_utils = ui_utils.UIUtils()
         
+        self._deploy_windows_tools()
+        
         self._init_state()
         self._setup_window()
         self._connect_signals()
         self._setup_backend_handlers()
         self.init_navigation()
         
-        # 保存自动更新器的引用，防止被垃圾回收导致崩溃
         self.startup_updater = None
+        self.sksp_worker = None
+        self.sksp_thread = None
         
         QTimer.singleShot(1000, self.check_startup_tasks)
+
+    def _deploy_windows_tools(self):
+        """
+        [新增] Windows 专用：启动时将 iasl.exe 和 acpidump.exe 释放到 exe 同级目录
+        """
+        if platform.system() != "Windows":
+            return
+            
+        if getattr(sys, 'frozen', False):
+            try:
+                exe_dir = os.path.dirname(sys.executable)
+
+                if hasattr(sys, '_MEIPASS'):
+                    source_dir = os.path.join(sys._MEIPASS, "Scripts")
+                else:
+                    return
+
+                tools = ["acpidump.exe", "iasl.exe"]
+                
+                for tool in tools:
+                    src_path = os.path.join(source_dir, tool)
+                    dst_path = os.path.join(exe_dir, tool)
+                    
+                    if os.path.exists(src_path) and not os.path.exists(dst_path):
+                        try:
+                            shutil.copy2(src_path, dst_path)
+                            self.backend.u.log_message(f"[系统] 已释放工具: {tool}", level="INFO")
+                        except Exception as e:
+                            self.backend.u.log_message(f"[系统] 释放工具 {tool} 失败: {e}", level="WARNING")
+            except Exception as e:
+                self.backend.u.log_message(f"[系统] 工具部署流程出错: {e}", level="ERROR")
 
     def check_startup_tasks(self):
         self.backend.o.check_sksp_on_startup()
@@ -60,6 +115,9 @@ class OCS(FluentWindow):
         if hasattr(self, 'settingsPage'):
             self.settingsPage.refresh_sksp_status()
         
+        if self.settings.get("auto_check_sksp_updates"):
+            self._start_sksp_update_check()
+
         if self.settings.get_auto_update_check():
             self.startup_updater = updater.Updater(
                 utils_instance=self.backend.u,
@@ -69,6 +127,37 @@ class OCS(FluentWindow):
                 integrity_checker_instance=self.backend.integrity_checker
             )
             self.startup_updater.run_update()
+
+    def _start_sksp_update_check(self):
+        if self.sksp_thread and self.sksp_thread.isRunning():
+            return
+
+        self.sksp_thread = QThread()
+        self.sksp_worker = SKSPStartupWorker(self.backend)
+        self.sksp_worker.moveToThread(self.sksp_thread)
+        
+        self.sksp_thread.started.connect(self.sksp_worker.run)
+        self.sksp_worker.update_found.connect(self._on_startup_sksp_update_found)
+        self.sksp_worker.finished.connect(self.sksp_thread.quit)
+        self.sksp_thread.finished.connect(self.sksp_worker.deleteLater)
+        self.sksp_thread.finished.connect(self.sksp_thread.deleteLater)
+        
+        self.sksp_thread.start()
+
+    def _on_startup_sksp_update_found(self, remote_info):
+        title = "发现 SKSP 资源包更新"
+        content = (
+            f"检测到新版本的 SKSP 资源包 (v{remote_info.get('version')})。<br>"
+            f"发布日期: {remote_info.get('release_date', '未知')}<br><br>"
+            f"{remote_info.get('description', '')}<br><br>"
+            "更新资源包可以提高硬件识别准确率和驱动兼容性。<br>"
+            "是否立即更新？"
+        )
+        
+        if show_confirmation(title, content, yes_text="立即更新", no_text="稍后"):
+            if hasattr(self, 'settingsPage'):
+                self.switchTo(self.settingsPage)
+                self.settingsPage.start_sksp_download()
 
     def _init_state(self):
         self.hardware_state = HardwareReportState()

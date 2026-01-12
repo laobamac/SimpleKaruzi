@@ -54,12 +54,14 @@ class gatheringFiles:
         self.sksp_manifest_file = os.path.join(self.ock_files_dir, "manifest.json")
 
     def _safe_rmtree(self, path):
+        """
+        [安全修复] 删除目录前的安全检查栅栏
+        """
         if not path:
             return
         
         path = os.path.abspath(path)
         
-        # 危险目录列表
         critical_paths = [
             os.path.expanduser("~"),           # 用户主目录
             os.path.expanduser("~/Desktop"),   # 桌面
@@ -196,16 +198,39 @@ class gatheringFiles:
         return True
     
     def gather_bootloader_kexts(self, kexts, macos_version):
-        self.utils.log_message("[收集文件] 请稍候，正在下载 OpenCorePkg、Kexts 和 macserial...", level="INFO", to_build_log=True)
+        self.utils.log_message("[收集文件] 正在检查资源...", level="INFO", to_build_log=True)
 
         download_history = self.utils.read_file(self.download_history_file)
         if not isinstance(download_history, list):
             download_history = []
 
-        download_database = self.update_download_database(kexts, download_history)
+        is_offline_mode = False
+        download_database = []
+
+        try:
+            download_database = self.update_download_database(kexts, download_history)
+        except Exception as e:
+            # 联网失败，检查是否可以离线回退
+            self.utils.log_message(f"[收集文件] 无法获取在线资源列表: {e}", level="WARNING", to_build_log=True)
+            
+            has_sksp, _ = self.check_sksp_status()
+            
+            if has_sksp:
+                msg = (
+                    "无法连接到更新服务器，但检测到本地已安装 SKSP 资源包。\n\n"
+                    "是否尝试仅使用本地资源生成 EFI？\n"
+                    "(注意：如果本地资源缺失，生成将会失败)"
+                )
+                if show_confirmation("网络连接失败", msg, yes_text="尝试离线生成", no_text="取消"):
+                    is_offline_mode = True
+                    self.utils.log_message("[收集文件] 已切换至离线模式，仅使用本地 SKSP 资源。", level="WARNING", to_build_log=True)
+                else:
+                    return False
+            else:
+                show_info("网络错误", f"无法连接到服务器，且本地未检测到 SKSP 资源包。\n请检查网络连接后重试。\n\n错误详情: {e}")
+                return False
         
         self.utils.create_folder(self.temporary_dir)
-
         seen_download_urls = set()
 
         for product in kexts + [{"Name": "OpenCorePkg"}]:
@@ -236,6 +261,21 @@ class gatheringFiles:
             elif product_name == "UTBDefault":
                 product_name = "USBToolBox"
 
+            if is_offline_mode:
+                asset_dir = os.path.join(self.ock_files_dir, product_name)
+                manifest_path = os.path.join(asset_dir, "manifest.json")
+                folder_is_valid, _ = self.integrity_checker.verify_folder_integrity(asset_dir, manifest_path)
+                
+                if folder_is_valid:
+                    self.utils.log_message(f"[收集文件] [离线] 使用本地资源: {product_name}", level="INFO", to_build_log=True)
+                    continue
+                else:
+                    self.utils.log_message(f"[收集文件] 错误: 本地缺少 {product_name} 或校验失败，且无法联网下载。", level="ERROR", to_build_log=True)
+                    show_info("资源缺失", f"本地 SKSP 缺少 {product_name}，且当前无网络连接。\n请连接网络后重试。")
+                    self._safe_rmtree(self.temporary_dir)
+                    return False
+
+            # === 在线模式逻辑 ===
             product_download_index = self.get_product_index(download_database, product_name)
             if product_download_index is None:
                 if hasattr(product, 'github_repo') and product.github_repo:
@@ -398,6 +438,7 @@ class gatheringFiles:
         self.utils.log_message("[收集文件] 使用本地 Hardware Sniffer: {}".format(local_sniffer_path), level="INFO")
         return local_sniffer_path
 
+    # === SKSP 功能 (安全增强版) ===
     def get_local_sksp_info(self):
         """获取本地 SKSP manifest 信息"""
         if os.path.exists(self.sksp_manifest_file):
@@ -442,7 +483,7 @@ class gatheringFiles:
         if not download_url:
             return False, "Manifest 中缺少下载链接"
 
-        # 使用系统临时目录下的独立子目录，避免路径污染
+        # [安全修复] 使用系统临时目录下的独立子目录
         safe_temp_root = os.path.join(tempfile.gettempdir(), "SKSP_Installer_Safe")
         if os.path.exists(safe_temp_root):
             self._safe_rmtree(safe_temp_root)
@@ -466,8 +507,7 @@ class gatheringFiles:
             response = urllib.request.urlopen(req, context=ctx)
             total_size = int(response.info().get('Content-Length', 0))
             
-            # 检查文件大小，防止下载空文件或错误页面
-            if total_size > 0 and total_size < 1024 * 10: # 小于 10KB 肯定不对
+            if total_size > 0 and total_size < 1024 * 10: 
                 return False, "下载链接返回的文件无效 (过小)。"
             
             downloaded_size = 0
@@ -502,10 +542,8 @@ class gatheringFiles:
             
             # 解压
             if dialog: dialog.update_progress(98, "正在解压...")
-            # 解压到 safe_temp_root
             self.utils.extract_zip_file(temp_zip, safe_temp_root)
             
-            # 查找解压后的 OCK_Files
             extracted_ock = None
             for root, dirs, files in os.walk(safe_temp_root):
                 if "OCK_Files" in dirs:
@@ -520,10 +558,8 @@ class gatheringFiles:
                 if os.path.exists(self.ock_files_dir):
                     self._safe_rmtree(self.ock_files_dir)
                 
-                # 移动目录
                 shutil.move(extracted_ock, self.ock_files_dir)
                 
-                # 写入 manifest
                 if not os.path.exists(self.sksp_manifest_file):
                     self.utils.write_file(self.sksp_manifest_file, remote_info)
             else:
@@ -534,7 +570,6 @@ class gatheringFiles:
         except Exception as e:
             return False, f"发生错误: {str(e)}"
         finally:
-            # 清理我们创建的安全临时目录
             if os.path.exists(safe_temp_root):
                 self._safe_rmtree(safe_temp_root)
 
