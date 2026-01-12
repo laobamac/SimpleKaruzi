@@ -12,38 +12,39 @@ class DSDT:
         self.github = github_instance if github_instance else github.Github()
         self.fetcher = resource_fetcher_instance if resource_fetcher_instance else resource_fetcher.ResourceFetcher()
         self.r = run_instance if run_instance else run.Run()
-        self.iasl_url_macOS = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/acidanthera/MaciASL/master/Dist/iasl-stable"
-        self.iasl_url_macOS_legacy = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/acidanthera/MaciASL/master/Dist/iasl-legacy"
-        self.iasl_url_linux = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/corpnewt/linux_iasl/main/iasl.zip"
-        self.iasl_url_linux_legacy = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/corpnewt/iasl-legacy/main/iasl-legacy-linux.zip"
-        self.acpi_binary_tools = "https://gitapi.simplehac.top/https://github.com/acpica/acpica/releases"
-        self.iasl_url_windows_legacy = "https://gitapi.simplehac.top/https://raw.githubusercontent.com/corpnewt/iasl-legacy/main/iasl-legacy-windows.zip"
-        self.h = {} # {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-
+        
         if getattr(sys, 'frozen', False):
             base_path = os.path.dirname(sys.executable)
-            if os.path.exists(os.path.join(base_path, "Scripts", "iasl.exe")):
-                 self.script_dir = os.path.join(base_path, "Scripts")
+            if sys.platform == "darwin" and "Contents/MacOS" in base_path:
+                if hasattr(sys, '_MEIPASS'):
+                    self.script_dir = os.path.join(sys._MEIPASS, "Scripts")
+                else:
+                    potential_paths = [
+                        os.path.join(base_path, "Scripts"), # exe同级
+                        os.path.join(os.path.dirname(base_path), "Resources", "Scripts"), # .app/Contents/Resources/Scripts
+                        base_path # 就在当前目录
+                    ]
+                    self.script_dir = base_path
+                    for p in potential_paths:
+                        if os.path.exists(p):
+                            self.script_dir = p
+                            break
             else:
-                 self.script_dir = base_path # 或者是 base_path
+                if hasattr(sys, '_MEIPASS'):
+                    self.script_dir = os.path.join(sys._MEIPASS, "Scripts")
+                elif os.path.exists(os.path.join(base_path, "Scripts")):
+                    self.script_dir = os.path.join(base_path, "Scripts")
+                else:
+                    self.script_dir = base_path
         else:
             self.script_dir = os.path.dirname(os.path.realpath(__file__))
 
+        self.h = {} 
         self.iasl = self.check_iasl()
-
-        #self.iasl_legacy = self.check_iasl(legacy=True)
+        
         if not self.iasl:
-            url = self.acpi_binary_tools if os.name=="nt" else \
-            self.iasl_url_macOS if sys.platform=="darwin" else \
-            self.iasl_url_linux if sys.platform.startswith("linux") else None
-            exception = "Could not locate or download iasl!"
-            if url:
-                exception += "\n\nPlease manually download {} from:\n - {}\n\nAnd place in:\n - {}\n".format(
-                    "\"iasl-win-YYYYMMDD.zip\" and extract iasl.exe" if os.name=="nt" else "iasl",
-                    url,
-                    os.path.dirname(os.path.realpath(__file__))
-                )
-            raise Exception(exception)
+            raise Exception(f"Could not locate iasl! Please ensure iasl executable is in: {self.script_dir}")
+            
         self.allowed_signatures = (b"APIC",b"DMAR",b"DSDT",b"SSDT")
         self.mixed_listing      = (b"DSDT",b"SSDT")
         self.acpi_tables = {}
@@ -288,49 +289,31 @@ class DSDT:
             
         return None
     
-    def check_iasl(self, legacy=False, try_downloading=True): # try_downloading 参数保留以兼容接口，但不再使用
+    def check_iasl(self, legacy=False, try_downloading=False): # try_downloading保留参数位但不使用
         if sys.platform == "win32":
-            target = os.path.join(self.script_dir, "iasl.exe") # Windows 下直接找 iasl.exe
+            target = os.path.join(self.script_dir, "iasl.exe")
         else:
-            if legacy:
-                targets = (os.path.join(self.script_dir, "iasl-legacy"),)
-            else:
-                targets = (
-                    os.path.join(self.script_dir, "iasl-dev"),
-                    os.path.join(self.script_dir, "iasl-stable"),
-                    os.path.join(self.script_dir, "iasl")
-                )
+            # macOS / Linux
+            # 检查常见名称
+            targets = [
+                os.path.join(self.script_dir, "iasl"),
+                os.path.join(self.script_dir, "iasl-stable"),
+                os.path.join(self.script_dir, "iasl-dev")
+            ]
             target = next((t for t in targets if os.path.exists(t)), None)
+            
+            # 如果找到了，确保有执行权限
+            if target and os.path.exists(target):
+                try:
+                    # 尝试赋予执行权限，防止打包后丢失权限
+                    os.chmod(target, 0o755)
+                except:
+                    pass
 
         if target and os.path.exists(target):
             return target
-
+        
         return None
-
-    def _download_and_extract(self, temp, url):
-        self.u.log_message("[DSDT] Downloading iasl...", level="INFO")
-        ztemp = tempfile.mkdtemp(dir=temp)
-        zfile = os.path.basename(url)
-        #print("Downloading {}".format(os.path.basename(url)))
-        #self.dl.stream_to_file(url, os.path.join(ztemp,zfile), progress=False, headers=self.h)
-        self.fetcher.download_and_save_file(url, os.path.join(ztemp,zfile))
-        search_dir = ztemp
-        if zfile.lower().endswith(".zip"):
-            print(" - Extracting")
-            search_dir = tempfile.mkdtemp(dir=temp)
-            # Extract with built-in tools \o/
-            with zipfile.ZipFile(os.path.join(ztemp,zfile)) as z:
-                z.extractall(search_dir)
-        script_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)))
-        for x in os.listdir(search_dir):
-            if x.lower().startswith(("iasl","acpidump")):
-                # Found one
-                print(" - Found {}".format(x))
-                if sys.platform != "win32":
-                    print("   - Chmod +x")
-                    self.r.run({"args":["chmod","+x",os.path.join(search_dir,x)]})
-                print("   - Copying to {} directory".format(os.path.basename(script_dir)))
-                shutil.copy(os.path.join(search_dir,x), os.path.join(script_dir,x))
 
     def dump_tables(self, output, disassemble=False):
         # Helper to dump all ACPI tables to the specified
@@ -339,7 +322,9 @@ class DSDT:
         print("")
         res = self.check_output(output)
         if os.name == "nt":
+            # Windows 下使用本地 acpidump.exe
             target = os.path.join(self.script_dir, "acpidump.exe")
+            
             if os.path.exists(target):
                 # Dump to the target folder
                 print("Dumping tables to {}...".format(res))
@@ -379,9 +364,10 @@ class DSDT:
                     return self.load(res)
                 return res
             else:
-                print("Failed to locate acpidump.exe")
+                print(f"Failed to locate acpidump.exe at {target}")
                 return
         elif sys.platform.startswith("linux"):
+            # Linux dump logic remains unchanged
             table_dir = "/sys/firmware/acpi/tables"
             if not os.path.isdir(table_dir):
                 print("Could not locate {}!".format(table_dir))

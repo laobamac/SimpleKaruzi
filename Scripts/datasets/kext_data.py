@@ -474,6 +474,10 @@ kexts = [
         github_repo = {
             "owner": "RattletraPM",
             "repo": "GUX-RyzenXHCIFix"
+        },
+        download_info = {
+            "id": 185462301,
+            "url": "https://gitapi.simplehac.top/https://github.com/RattletraPM/GUX-RyzenXHCIFix/releases/download/v1.3.0b1-ryzenxhcifix/GenericUSBXHCI.kext.zip"
         }
     ),
     KextInfo(
@@ -812,7 +816,7 @@ kexts = [
         category = "Extras",
         download_info = {
             "id": 738162736, 
-            "url": "https://gitapi.simplehac.top/https://github.com/acidanthera/bugtracker/files/3703498/AppleMCEReporterDisabler.kext.zip"
+            "url": "https://gitapi.simplehac.top/https://github.com/laobamac/laobamac/blob/main/Files/AppleMCEReporterDisabler.kext.zip"
         }
     ),
     KextInfo(

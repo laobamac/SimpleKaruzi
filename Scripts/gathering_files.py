@@ -13,6 +13,7 @@ import json
 import time
 import urllib.request
 import ssl
+import tempfile
 
 os_name = platform.system()
 
@@ -35,6 +36,7 @@ class gatheringFiles:
         self.temporary_dir = self.utils.get_temporary_dir()
         
         if getattr(sys, 'frozen', False):
+            self.app_root = os.path.dirname(sys.executable)
             app_name = "SimpleKaruzi"
             if platform.system() == "Windows":
                 base_dir = os.environ.get("APPDATA", os.path.expanduser("~"))
@@ -45,10 +47,36 @@ class gatheringFiles:
             
             self.ock_files_dir = os.path.join(base_dir, app_name, "OCK_Files")
         else:
-            self.ock_files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "OCK_Files")
+            self.app_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+            self.ock_files_dir = os.path.join(self.app_root, "OCK_Files")
         
         self.download_history_file = os.path.join(self.ock_files_dir, "history.json")
         self.sksp_manifest_file = os.path.join(self.ock_files_dir, "manifest.json")
+
+    def _safe_rmtree(self, path):
+        if not path:
+            return
+        
+        path = os.path.abspath(path)
+        
+        # 危险目录列表
+        critical_paths = [
+            os.path.expanduser("~"),           # 用户主目录
+            os.path.expanduser("~/Desktop"),   # 桌面
+            os.path.expanduser("~/Documents"), # 文档
+            os.path.abspath(os.sep),           # 根目录 /
+            self.app_root                      # 程序运行目录
+        ]
+        
+        if path in critical_paths:
+            self.utils.log_message(f"[安全拦截] 试图删除关键目录: {path}，操作已阻止。", level="ERROR")
+            return
+
+        if os.path.exists(path):
+            try:
+                shutil.rmtree(path, ignore_errors=True)
+            except Exception as e:
+                self.utils.log_message(f"删除目录失败: {path}, 错误: {e}", level="WARNING")
 
     def get_product_index(self, product_list, product_name_name):
         for index, product in enumerate(product_list):
@@ -244,7 +272,7 @@ class gatheringFiles:
                 self.utils.log_message("[收集文件] 正在从 {} 下载".format(product_download_url), level="INFO", to_build_log=True)
             else:
                 self.utils.log_message("[收集文件] 无法找到 {} 的下载链接。".format(product_name), level="ERROR", to_build_log=True)
-                shutil.rmtree(self.temporary_dir, ignore_errors=True)
+                self._safe_rmtree(self.temporary_dir)
                 return False
 
             zip_path = os.path.join(self.temporary_dir, product_name) + ".zip"
@@ -277,7 +305,7 @@ class gatheringFiles:
 
                 if not os.path.exists(oc_binary_data_zip_path):
                     self.utils.log_message("[收集文件] 暂时无法下载 OcBinaryData。请稍后再试。", level="ERROR", to_build_log=True)
-                    shutil.rmtree(self.temporary_dir, ignore_errors=True)
+                    self._safe_rmtree(self.temporary_dir)
                     return False
                 
                 self.utils.extract_zip_file(oc_binary_data_zip_path)
@@ -286,7 +314,7 @@ class gatheringFiles:
                 self.integrity_checker.generate_folder_manifest(asset_dir, manifest_path)
                 self._update_download_history(download_history, product_name, product_id, product_download_url, sha256_hash)
 
-        shutil.rmtree(self.temporary_dir, ignore_errors=True)
+        self._safe_rmtree(self.temporary_dir)
         return True
     
     def get_kernel_patches(self, patches_name, patches_url):
@@ -340,16 +368,36 @@ class gatheringFiles:
                 local_sniffer_path = path
                 break
         
+        # 完整性检查
+        if local_sniffer_path:
+            try:
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                
+                subprocess.run(
+                    [local_sniffer_path, "--help"], 
+                    stdout=subprocess.DEVNULL, 
+                    stderr=subprocess.DEVNULL, 
+                    startupinfo=startupinfo,
+                    check=True
+                )
+            except (subprocess.CalledProcessError, Exception):
+                self.utils.log_message(f"[收集文件] 检测到 {local_sniffer_path} 已损坏 (PyInstaller Error)。", level="WARNING")
+                try:
+                    os.remove(local_sniffer_path)
+                    self.utils.log_message("[收集文件] 已删除损坏的文件。请重启软件或重新下载该文件。", level="WARNING")
+                except Exception as e:
+                    self.utils.log_message(f"[收集文件] 无法删除损坏的文件: {e}", level="ERROR")
+                local_sniffer_path = None
+
         if not local_sniffer_path:
-            error_msg = "未找到 Hardware Sniffer。\n请确保 '{}' 存在于 Scripts 文件夹或程序根目录下。".format(target_file)
+            error_msg = "未找到有效 Hardware Sniffer。\n请确保 '{}' 存在于 Scripts 文件夹或程序根目录下。".format(target_file)
             self.utils.log_message("[收集文件] 错误: {}".format(error_msg), level="ERROR")
-            show_info("文件丢失", error_msg)
             raise FileNotFoundError(error_msg)
 
         self.utils.log_message("[收集文件] 使用本地 Hardware Sniffer: {}".format(local_sniffer_path), level="INFO")
         return local_sniffer_path
 
-    # === SKSP 功能 ===
     def get_local_sksp_info(self):
         """获取本地 SKSP manifest 信息"""
         if os.path.exists(self.sksp_manifest_file):
@@ -383,7 +431,7 @@ class gatheringFiles:
         return exists, version
 
     def download_and_install_sksp(self, dialog=None):
-        """下载并安装 SKSP"""
+        """下载并安装 SKSP (修复高危删除 Bug)"""
         remote_info = self.fetch_remote_sksp_info()
         if not remote_info:
             return False, "无法获取远程 SKSP 信息 (请检查网络)"
@@ -394,9 +442,13 @@ class gatheringFiles:
         if not download_url:
             return False, "Manifest 中缺少下载链接"
 
-        # 准备下载
-        self.utils.create_folder(self.temporary_dir)
-        temp_zip = os.path.join(self.temporary_dir, "SKSP.zip")
+        # 使用系统临时目录下的独立子目录，避免路径污染
+        safe_temp_root = os.path.join(tempfile.gettempdir(), "SKSP_Installer_Safe")
+        if os.path.exists(safe_temp_root):
+            self._safe_rmtree(safe_temp_root)
+        os.makedirs(safe_temp_root, exist_ok=True)
+        
+        temp_zip = os.path.join(safe_temp_root, "SKSP.zip")
         
         try:
             if dialog:
@@ -414,18 +466,18 @@ class gatheringFiles:
             response = urllib.request.urlopen(req, context=ctx)
             total_size = int(response.info().get('Content-Length', 0))
             
-            if total_size > 0 and total_size < 1024:
-                return False, "下载链接返回的文件过小，可能是错误页面。"
+            # 检查文件大小，防止下载空文件或错误页面
+            if total_size > 0 and total_size < 1024 * 10: # 小于 10KB 肯定不对
+                return False, "下载链接返回的文件无效 (过小)。"
             
             downloaded_size = 0
-            chunk_size = 8192
+            chunk_size = 8192 * 4
             start_time = time.time()
             
             with open(temp_zip, 'wb') as out_file:
                 while True:
                     if dialog and dialog.is_canceled():
                         response.close()
-                        os.remove(temp_zip)
                         return False, "用户取消"
                     
                     chunk = response.read(chunk_size)
@@ -446,20 +498,32 @@ class gatheringFiles:
             if sha256:
                 local_sha = self.integrity_checker.get_sha256(temp_zip)
                 if local_sha and local_sha.lower() != sha256.lower():
-                    try: os.remove(temp_zip) 
-                    except: pass
                     return False, "文件校验失败\n期望: {}...\n实际: {}...".format(sha256[:10], local_sha[:10])
             
             # 解压
             if dialog: dialog.update_progress(98, "正在解压...")
-            self.utils.extract_zip_file(temp_zip, self.temporary_dir)
+            # 解压到 safe_temp_root
+            self.utils.extract_zip_file(temp_zip, safe_temp_root)
             
-            extracted_ock = os.path.join(self.temporary_dir, "OCK_Files")
-            if os.path.exists(extracted_ock):
+            # 查找解压后的 OCK_Files
+            extracted_ock = None
+            for root, dirs, files in os.walk(safe_temp_root):
+                if "OCK_Files" in dirs:
+                    extracted_ock = os.path.join(root, "OCK_Files")
+                    break
+            
+            if extracted_ock and os.path.exists(extracted_ock):
+                # 再次确认目标路径安全性
+                if self.ock_files_dir == self.app_root or self.ock_files_dir == os.path.expanduser("~"):
+                    return False, "目标安装路径不安全，已终止。"
+
                 if os.path.exists(self.ock_files_dir):
-                    shutil.rmtree(self.ock_files_dir)
+                    self._safe_rmtree(self.ock_files_dir)
+                
+                # 移动目录
                 shutil.move(extracted_ock, self.ock_files_dir)
                 
+                # 写入 manifest
                 if not os.path.exists(self.sksp_manifest_file):
                     self.utils.write_file(self.sksp_manifest_file, remote_info)
             else:
@@ -468,16 +532,17 @@ class gatheringFiles:
             return True, "安装成功"
             
         except Exception as e:
-            return False, str(e)
+            return False, f"发生错误: {str(e)}"
         finally:
-            if os.path.exists(self.temporary_dir):
-                shutil.rmtree(self.temporary_dir, ignore_errors=True)
+            # 清理我们创建的安全临时目录
+            if os.path.exists(safe_temp_root):
+                self._safe_rmtree(safe_temp_root)
 
     def check_sksp_on_startup(self):
         """启动时检查逻辑"""
         exists, _ = self.check_sksp_status()
         if exists:
-            return # 存在则跳过
+            return 
             
         content = (
             "检测到 <b>OCK_Files</b> (资源文件) 缺失或为空。<br><br>"

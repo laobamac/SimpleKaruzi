@@ -216,6 +216,20 @@ class ReportValidator:
             }
         }
     
+    def _preprocess_data(self, data):
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if key == "PCI Path" and isinstance(value, str):
+                    # 检查是否以 Pci( 开头，如果是，则补全 PciRoot(0x0)/
+                    if value.strip().startswith("Pci("):
+                        data[key] = "PciRoot(0x0)/" + value.strip()
+                elif isinstance(value, (dict, list)):
+                    self._preprocess_data(value)
+        elif isinstance(data, list):
+            for item in data:
+                self._preprocess_data(item)
+        return data
+
     def validate_report(self, report_path):
         self.errors = []
         self.warnings = []
@@ -233,6 +247,9 @@ class ReportValidator:
         except Exception as e:
             self.errors.append("Error reading file: {}".format(str(e)))
             return False, self.errors, self.warnings, None
+        
+        # 在验证前先进行预处理修复
+        data = self._preprocess_data(data)
             
         cleaned_data = self._validate_node(data, self.SCHEMA, "Root")
         
