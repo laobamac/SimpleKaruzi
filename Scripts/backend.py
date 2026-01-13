@@ -106,7 +106,10 @@ class Backend(QObject):
         
         custom_output_dir = self.settings.get_build_output_directory()
         if custom_output_dir:
-            self.result_dir = self.u.create_folder(custom_output_dir, remove_content=True)
+            safe_output_dir = os.path.join(custom_output_dir, "SimpleKaruzi_Build")
+            
+            self.u.create_folder(safe_output_dir, remove_content=True)
+            self.result_dir = safe_output_dir
         else:
             self.result_dir = self.u.get_temporary_dir()
 

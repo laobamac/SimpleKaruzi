@@ -13,7 +13,7 @@ from PyQt6.QtCore import QThread, pyqtSignal, QObject
 
 from Scripts.custom_dialogs import show_update_dialog, show_info, show_confirmation
 
-CURRENT_VERSION = "1.0.1"
+CURRENT_VERSION = "1.0.2"
 UPDATE_JSON_URL = "https://next.oclpapi.simplehac.cn/SKSP/update.json"
 
 def version_compare(remote_ver, local_ver):
@@ -83,7 +83,6 @@ class Updater(QObject):
         
         zip_path = os.path.join(temp_dir, "update_pkg.zip")
         
-        # 1. 下载
         report(0, "准备下载...")
         try:
             ctx = ssl.create_default_context()
