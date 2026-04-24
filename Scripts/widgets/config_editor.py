@@ -1,8 +1,17 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeWidgetItem, QHeaderView, QAbstractItemView
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
-from PyQt6.QtGui import QBrush, QColor
+try:
+    from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTreeWidgetItem, QHeaderView, QAbstractItemView
+    from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+    from PyQt5.QtGui import QBrush, QColor
+except ImportError:
+    from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeWidgetItem, QHeaderView, QAbstractItemView
+    from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+    from PyQt6.QtGui import QBrush, QColor
 
-from qfluentwidgets import CardWidget, TreeWidget, BodyLabel, StrongBodyLabel
+try:
+    from qfluentwidgets import CardWidget, TreeWidget, BodyLabel, StrongBodyLabel
+except ImportError:
+    from qfluentwidgets_compat import CardWidget, BodyLabel, StrongBodyLabel
+    from PyQt5.QtWidgets import QTreeWidget as TreeWidget
 
 from Scripts.datasets.config_tooltips import get_tooltip
 from Scripts.value_formatters import format_value, get_value_type
@@ -47,18 +56,33 @@ class ConfigEditor(QWidget):
         self.tree.setRootIsDecorated(True)
         self.tree.setItemsExpandable(True)
         self.tree.setExpandsOnDoubleClick(False)
-        self.tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        
+        try:
+            self.tree.setEditTriggers(QAbstractItemView.NoEditTriggers)
+            self.tree.setSelectionMode(QAbstractItemView.SingleSelection)
+        except AttributeError:
+            self.tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        
         self.tree.itemExpanded.connect(self._update_tree_height)
         self.tree.itemCollapsed.connect(self._update_tree_height)
         
         header = self.tree.header()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        try:
+            header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(2, QHeaderView.Stretch)
+            header.setSectionResizeMode(3, QHeaderView.Stretch)
+        except AttributeError:
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         
-        self.tree.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        try:
+            self.tree.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        except AttributeError:
+            self.tree.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
         card_layout.addWidget(self.tree)
         self.mainLayout.addWidget(card)
@@ -102,7 +126,10 @@ class ConfigEditor(QWidget):
                 item.setText(2, "<array: {} items>".format(len(original_value)))
             else:
                 item.setText(2, format_value(original_value))
-                item.setData(2, Qt.ItemDataRole.UserRole, get_value_type(original_value))
+                try:
+                    item.setData(2, Qt.UserRole, get_value_type(original_value))
+                except AttributeError:
+                    item.setData(2, Qt.ItemDataRole.UserRole, get_value_type(original_value))
         else:
             item.setText(2, "")
         
@@ -113,7 +140,10 @@ class ConfigEditor(QWidget):
                 item.setText(3, "<array: {} items>".format(len(modified_value)))
             else:
                 item.setText(3, format_value(modified_value))
-                item.setData(3, Qt.ItemDataRole.UserRole, get_value_type(modified_value))
+                try:
+                    item.setData(3, Qt.UserRole, get_value_type(modified_value))
+                except AttributeError:
+                    item.setData(3, Qt.ItemDataRole.UserRole, get_value_type(modified_value))
         else:
             item.setText(3, "")
     
@@ -157,12 +187,18 @@ class ConfigEditor(QWidget):
 
             item = QTreeWidgetItem(parent_item)
             item.setText(0, key)
-            item.setData(0, Qt.ItemDataRole.UserRole, current_path)
+            try:
+                item.setData(0, Qt.UserRole, current_path)
+            except AttributeError:
+                item.setData(0, Qt.ItemDataRole.UserRole, current_path)
             self._apply_highlighting(item, change_type)
             self._setup_tooltip(item, current_path, modified_value, original_value)
 
             if isinstance(effective_value, dict):
-                item.setData(3, Qt.ItemDataRole.UserRole, "dict")
+                try:
+                    item.setData(3, Qt.UserRole, "dict")
+                except AttributeError:
+                    item.setData(3, Qt.ItemDataRole.UserRole, "dict")
                 self._set_value_columns(item, original_value, modified_value, change_type, is_dict=True)
 
                 self._render_config(
@@ -188,8 +224,12 @@ class ConfigEditor(QWidget):
         
         item = QTreeWidgetItem(parent_item)
         item.setText(0, array_key)
-        item.setData(0, Qt.ItemDataRole.UserRole, path_string)
-        item.setData(3, Qt.ItemDataRole.UserRole, "array")
+        try:
+            item.setData(0, Qt.UserRole, path_string)
+            item.setData(3, Qt.UserRole, "array")
+        except AttributeError:
+            item.setData(0, Qt.ItemDataRole.UserRole, path_string)
+            item.setData(3, Qt.ItemDataRole.UserRole, "array")
         
         self._apply_highlighting(item, change_type)
         self._setup_tooltip(item, path_string, modified_array, original_array)
@@ -218,13 +258,19 @@ class ConfigEditor(QWidget):
             
             element_item = QTreeWidgetItem(item)
             element_item.setText(0, "[{}]".format(i))
-            element_item.setData(0, Qt.ItemDataRole.UserRole, element_path)
+            try:
+                element_item.setData(0, Qt.UserRole, element_path)
+            except AttributeError:
+                element_item.setData(0, Qt.ItemDataRole.UserRole, element_path)
             
             self._apply_highlighting(element_item, element_change_type)
             self._setup_tooltip(element_item, element_path, modified_element, original_element)
             
             if isinstance(effective_element, dict):
-                element_item.setData(3, Qt.ItemDataRole.UserRole, "dict")
+                try:
+                    element_item.setData(3, Qt.UserRole, "dict")
+                except AttributeError:
+                    element_item.setData(3, Qt.ItemDataRole.UserRole, "dict")
                 self._set_value_columns(element_item, original_element, modified_element, element_change_type, is_dict=True)
                 
                 self._render_config(
@@ -234,7 +280,10 @@ class ConfigEditor(QWidget):
                     element_item
                 )
             elif isinstance(effective_element, list):
-                element_item.setData(3, Qt.ItemDataRole.UserRole, "array")
+                try:
+                    element_item.setData(3, Qt.UserRole, "array")
+                except AttributeError:
+                    element_item.setData(3, Qt.ItemDataRole.UserRole, "array")
                 self._set_value_columns(element_item, original_element, modified_element, element_change_type, is_array=True)
                 
                 self._render_array(

@@ -1,7 +1,7 @@
-from typing import Final
+from typing import Final, Dict
 
 
-COLORS: Final[dict[str, str]] = {
+COLORS = {
     "primary": "#0078D4",
     "primary_dark": "#005A9E",
     "primary_light": "#4CC2FF",
@@ -38,7 +38,7 @@ COLORS: Final[dict[str, str]] = {
     "border_focus": "#0078D4",
 }
 
-SPACING: Final[dict[str, int]] = {
+SPACING = {
     "tiny": 4,
     "small": 8,
     "medium": 12,
@@ -48,7 +48,7 @@ SPACING: Final[dict[str, int]] = {
     "xxxlarge": 32,
 }
 
-SIZES: Final[dict[str, int]] = {
+SIZES = {
     "sidebar_width": 220,
     "sidebar_item_height": 40,
     "button_height": 32,
@@ -58,7 +58,7 @@ SIZES: Final[dict[str, int]] = {
     "icon_size": 16,
 }
 
-RADIUS: Final[dict[str, int]] = {
+RADIUS = {
     "small": 4,
     "medium": 6,
     "large": 8,

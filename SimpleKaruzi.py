@@ -4,18 +4,30 @@ import platform
 import traceback
 import shutil
 
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QObject, QThread, pyqtSlot
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QApplication
-from qfluentwidgets import (
-    FluentWindow, 
-    NavigationItemPosition, 
-    FluentIcon, 
-    InfoBar, 
-    InfoBarPosition,
-    Theme,
-    setTheme
-)
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QObject, QThread, pyqtSlot
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QApplication
+
+try:
+    from qfluentwidgets import (
+        FluentWindow, 
+        NavigationItemPosition, 
+        FluentIcon, 
+        InfoBar, 
+        InfoBarPosition,
+        Theme,
+        setTheme
+    )
+except ImportError:
+    from qfluentwidgets_compat import (
+        FluentWindow, 
+        NavigationItemPosition, 
+        FluentIcon, 
+        InfoBar, 
+        InfoBarPosition,
+        Theme,
+        setTheme
+    )
 
 from Scripts.datasets import os_data
 from Scripts.state import HardwareReportState, macOSVersionState, SMBIOSState, BuildState
@@ -23,6 +35,7 @@ from Scripts.pages import HomePage, SelectHardwareReportPage, CompatibilityPage,
 from Scripts.backend import Backend
 from Scripts import ui_utils
 from Scripts.custom_dialogs import set_default_gui_handler, show_confirmation
+from Scripts.touch_support import enable_touch_support_for_window, apply_touch_friendly_style
 import updater
 
 WINDOW_MIN_SIZE = (1000, 700)
@@ -63,6 +76,7 @@ class OCS(FluentWindow):
         self.backend = backend
         self.settings = self.backend.settings
         self.ui_utils = ui_utils.UIUtils()
+        self.touch_support = None
         
         self._deploy_windows_tools()
         
@@ -71,12 +85,19 @@ class OCS(FluentWindow):
         self._connect_signals()
         self._setup_backend_handlers()
         self.init_navigation()
+        self._enable_touch_support()
         
         self.startup_updater = None
         self.sksp_worker = None
         self.sksp_thread = None
         
         QTimer.singleShot(1000, self.check_startup_tasks)
+    
+    def _enable_touch_support(self):
+        try:
+            self.touch_support = enable_touch_support_for_window(self)
+        except Exception as e:
+            pass
 
     def _deploy_windows_tools(self):
         """
@@ -181,7 +202,7 @@ class OCS(FluentWindow):
         system = platform.system()
         font_family = self.PLATFORM_FONTS.get(system, "Ubuntu")
         font.setFamily(font_family)
-        font.setStyleHint(QFont.StyleHint.SansSerif)
+        font.setStyleHint(QFont.SansSerif)
         self.setFont(font)
     
     def _restore_window_geometry(self):
@@ -305,7 +326,7 @@ class OCS(FluentWindow):
             InfoBar.success(
                 title="成功",
                 content=message,
-                orient=Qt.Orientation.Horizontal,
+                orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
@@ -315,7 +336,7 @@ class OCS(FluentWindow):
             InfoBar.error(
                 title="错误",
                 content=message,
-                orient=Qt.Orientation.Horizontal,
+                orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=5000,
@@ -325,7 +346,7 @@ class OCS(FluentWindow):
             InfoBar.warning(
                 title="警告",
                 content=message,
-                orient=Qt.Orientation.Horizontal,
+                orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=4000,
@@ -335,7 +356,7 @@ class OCS(FluentWindow):
             InfoBar.info(
                 title="提示",
                 content=message,
-                orient=Qt.Orientation.Horizontal,
+                orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
@@ -420,6 +441,11 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     set_default_gui_handler(app)
     
+    try:
+        apply_touch_friendly_style(app)
+    except Exception:
+        pass
+    
     saved_theme = backend.settings.get("theme")
     if saved_theme == "Light":
         setTheme(Theme.LIGHT)
@@ -433,6 +459,6 @@ if __name__ == "__main__":
     window.show()
     
     try:
-        sys.exit(app.exec())
+        sys.exit(app.exec_())
     except KeyboardInterrupt:
         sys.exit(0)
