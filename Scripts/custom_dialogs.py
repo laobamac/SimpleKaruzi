@@ -1,8 +1,16 @@
 import re
 import functools
-from PyQt6.QtCore import Qt, QObject, QThread, QMetaObject, QCoreApplication, pyqtSlot, pyqtSignal
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QRadioButton, QButtonGroup, QVBoxLayout, QCheckBox, QScrollArea, QLabel
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, BodyLabel, LineEdit, PushButton, ProgressBar
+try:
+    from PyQt5.QtCore import Qt, QObject, QThread, QMetaObject, QCoreApplication, pyqtSlot, pyqtSignal
+    from PyQt5.QtWidgets import QWidget, QHBoxLayout, QRadioButton, QButtonGroup, QVBoxLayout, QCheckBox, QScrollArea, QLabel
+except ImportError:
+    from PyQt6.QtCore import Qt, QObject, QThread, QMetaObject, QCoreApplication, pyqtSlot, pyqtSignal
+    from PyQt6.QtWidgets import QWidget, QHBoxLayout, QRadioButton, QButtonGroup, QVBoxLayout, QCheckBox, QScrollArea, QLabel
+
+try:
+    from qfluentwidgets import MessageBoxBase, SubtitleLabel, BodyLabel, LineEdit, PushButton, ProgressBar
+except ImportError:
+    from qfluentwidgets_compat import MessageBoxBase, SubtitleLabel, BodyLabel, LineEdit, PushButton, ProgressBar
 
 from Scripts.datasets import os_data
 
@@ -38,20 +46,16 @@ def ensure_main_thread(func):
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        # 如果当前已经是主线程，直接执行
         if QThread.currentThread() == QCoreApplication.instance().thread():
             return func(*args, **kwargs)
         
-        # 如果在子线程，创建一个 Runner 并移交给主线程执行
         runner = ThreadRunner(func, *args, **kwargs)
         runner.moveToThread(QCoreApplication.instance().thread())
         
-        # 使用 invokeMethod 调用 runner 的 "run" 槽函数
-        # 注意：这里必须传递字符串 "run"，不能传函数对象，否则 PyQt6 会报错
         ret = QMetaObject.invokeMethod(
             runner, 
             "run", 
-            Qt.ConnectionType.BlockingQueuedConnection
+            Qt.BlockingQueuedConnection
         )
         
         if runner.exception:
@@ -70,8 +74,8 @@ class CustomMessageDialog(MessageBoxBase):
         is_html = bool(re.search(r"<[^>]+>", content))
         
         if is_html:
-            self.contentLabel.setTextFormat(Qt.TextFormat.RichText)
-            self.contentLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+            self.contentLabel.setTextFormat(Qt.RichText)
+            self.contentLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
             self.contentLabel.setOpenExternalLinks(True)
 
         self.viewLayout.addWidget(self.titleLabel)
@@ -115,8 +119,8 @@ class CustomMessageDialog(MessageBoxBase):
                 
                 radio = QRadioButton()
                 label = BodyLabel(option_text)
-                label.setTextFormat(Qt.TextFormat.RichText)
-                label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+                label.setTextFormat(Qt.RichText)
+                label.setTextInteractionFlags(Qt.TextBrowserInteraction)
                 label.setOpenExternalLinks(True)
                 label.setWordWrap(True)
                 
@@ -194,13 +198,13 @@ class CustomMessageDialog(MessageBoxBase):
 def show_info(title: str, content: str) -> None:
     dialog = CustomMessageDialog(title, content)
     dialog.configure_buttons(yes_text="确定", show_cancel=False)
-    dialog.exec()
+    dialog.exec_()
 
 @ensure_main_thread
 def show_confirmation(title: str, content: str, yes_text="是", no_text="否") -> bool:
     dialog = CustomMessageDialog(title, content)
     dialog.configure_buttons(yes_text=yes_text, no_text=no_text, show_cancel=True)
-    return dialog.exec()
+    return dialog.exec_()
 
 @ensure_main_thread
 def show_options_dialog(title, content, options, default_index=0):
@@ -208,7 +212,7 @@ def show_options_dialog(title, content, options, default_index=0):
     dialog.add_radio_options(options, default_index)
     dialog.configure_buttons(yes_text="确定", show_cancel=True)
     
-    if dialog.exec():
+    if dialog.exec_():
         return dialog.button_group.checkedId()
     return None
 
@@ -218,7 +222,7 @@ def show_checklist_dialog(title, content, items, checked_indices=None):
     checkboxes = dialog.add_checklist(items, checked_indices)
     dialog.configure_buttons(yes_text="确定", show_cancel=True)
     
-    if dialog.exec():
+    if dialog.exec_():
         return [i for i, cb in enumerate(checkboxes) if cb.isChecked()]
     return None
 
@@ -229,7 +233,7 @@ def ask_network_count(total_networks):
         "您想处理多少个网络？<br>"
         "<ul>"
         "<li>输入数字 (1-{})</li>"
-        "<li>或选择“处理所有网络”</li>"
+        "<li>或选择\"处理所有网络\"</li>"
         "</ul>"
     ).format(total_networks, total_networks)
     
@@ -273,7 +277,7 @@ def ask_network_count(total_networks):
         
     dialog.accept = custom_accept
     
-    if dialog.exec():
+    if dialog.exec_():
         return result["value"]
 
     return 5
@@ -376,7 +380,7 @@ def show_smbios_selection_dialog(title, content, items, current_selection, defau
     
     dialog.configure_buttons(yes_text="确定", show_cancel=True)
     
-    if dialog.exec():
+    if dialog.exec_():
         selected_id = button_group.checkedId()
         if selected_id >= 0:
             return items[selected_id].get("name")
@@ -497,14 +501,12 @@ class DownloadProgressDialog(MessageBoxBase):
         
         self.widget.setMinimumWidth(600)
         
-        # 下载对话框只显示取消按钮
         self.yesButton.setVisible(False)
         self.cancelButton.setText("取消")
         
         self.progress_updated.connect(self._update_progress_safe)
         self._is_canceled = False
         
-        # 连接取消按钮信号
         self.cancelButton.clicked.connect(self.cancel_download)
 
     @pyqtSlot(int, str)

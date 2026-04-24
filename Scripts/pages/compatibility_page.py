@@ -1,10 +1,19 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QApplication
-from qfluentwidgets import (
-    SubtitleLabel, BodyLabel, ScrollArea, FluentIcon, 
-    GroupHeaderCardWidget, CardWidget, StrongBodyLabel,
-    SwitchButton, IndicatorPosition, isDarkTheme
-)
+from enum import Enum
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QApplication, QCheckBox, QLabel
+
+try:
+    from qfluentwidgets import (
+        SubtitleLabel, BodyLabel, ScrollArea, FluentIcon, 
+        GroupHeaderCardWidget, CardWidget, StrongBodyLabel,
+        SwitchButton, IndicatorPosition, isDarkTheme, CardGroupWidget
+    )
+except ImportError:
+    from qfluentwidgets_compat import (
+        SubtitleLabel, BodyLabel, ScrollArea, FluentIcon, 
+        CardWidget, StrongBodyLabel, isDarkTheme, SwitchButton,
+        IndicatorPosition, GroupHeaderCardWidget, CardGroupWidget
+    )
 
 from Scripts.styles import COLORS, SPACING
 from Scripts import ui_utils
@@ -69,7 +78,7 @@ class CompatibilityPage(ScrollArea):
         # 默认不显示详情 (简约模式)
         self.show_details = False
         
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         self.enableTransparentBackground()
@@ -106,7 +115,7 @@ class CompatibilityPage(ScrollArea):
         self.detail_switch.setOffText("简约视图")
         self.detail_switch.setChecked(self.show_details)
         self.detail_switch.checkedChanged.connect(self._on_detail_switch_changed)
-        header_layout.addWidget(self.detail_switch, 0, Qt.AlignmentFlag.AlignRight)
+        header_layout.addWidget(self.detail_switch, 0, Qt.AlignRight)
 
         self.expandLayout.addWidget(header_container)
         
@@ -274,7 +283,7 @@ class CompatibilityPage(ScrollArea):
 
     def _show_placeholder(self):
         self.placeholder_label = BodyLabel("加载硬件报告以查看兼容性信息")
-        self.placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.placeholder_label.setAlignment(Qt.AlignCenter)
         text_color = "#9E9E9E" if isDarkTheme() else "#605E5C"
         self.placeholder_label.setStyleSheet("color: {}; padding: 40px;".format(text_color))
         self.placeholder_label.setWordWrap(True)
