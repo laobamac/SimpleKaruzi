@@ -3,13 +3,25 @@ import os
 import shutil
 import threading
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
-from qfluentwidgets import (
-    SubtitleLabel, BodyLabel, CardWidget, TextEdit,
-    StrongBodyLabel, ProgressBar, PrimaryPushButton, FluentIcon,
-    ScrollArea, themeColor, isDarkTheme
-)
+try:
+    from PyQt5.QtCore import Qt, pyqtSignal
+    from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+except ImportError:
+    from PyQt6.QtCore import Qt, pyqtSignal
+    from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+
+try:
+    from qfluentwidgets import (
+        SubtitleLabel, BodyLabel, CardWidget, TextEdit,
+        StrongBodyLabel, ProgressBar, PrimaryPushButton, FluentIcon,
+        ScrollArea, themeColor, isDarkTheme
+    )
+except ImportError:
+    from qfluentwidgets_compat import (
+        SubtitleLabel, BodyLabel, CardWidget, TextEdit,
+        StrongBodyLabel, ProgressBar, PrimaryPushButton, FluentIcon,
+        ScrollArea, themeColor, isDarkTheme
+    )
 
 from Scripts.datasets import chipset_data
 from Scripts.datasets import kext_data
@@ -33,7 +45,7 @@ class BuildPage(ScrollArea):
         self.build_successful = False
         self.ui_utils = ui_utils_instance if ui_utils_instance else ui_utils.UIUtils()
         
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         self.enableTransparentBackground()
@@ -51,8 +63,6 @@ class BuildPage(ScrollArea):
         header_layout.setSpacing(SPACING["small"])
         title = SubtitleLabel("构建 OpenCore EFI")
         subtitle = BodyLabel("构建准备安装的定制化 OpenCore EFI")
-        # 移除强制颜色，让主题自适应
-        # subtitle.setStyleSheet("color: {};".format(COLORS["text_secondary"]))
         header_layout.addWidget(title)
         header_layout.addWidget(subtitle)
         self.expandLayout.addLayout(header_layout)
@@ -113,7 +123,6 @@ class BuildPage(ScrollArea):
         status_row.addWidget(self.status_icon_label)
         
         self.progress_label = StrongBodyLabel("准备构建")
-        # 移除强制的 text_secondary 颜色，仅保留字体设置
         self.progress_label.setStyleSheet("font-size: 15px; font-weight: 600;")
         status_row.addWidget(self.progress_label)
         status_row.addStretch()
@@ -150,20 +159,18 @@ class BuildPage(ScrollArea):
         log_card_layout.addWidget(log_title)
         
         log_description = BodyLabel("详细的构建过程信息和状态更新")
-        # 移除颜色硬编码
         log_description.setStyleSheet("font-size: 13px;")
         log_card_layout.addWidget(log_description)
 
         self.build_log = TextEdit()
         self.build_log.setReadOnly(True)
         self.build_log.setMinimumHeight(400)
-        # 优化样式：移除硬编码背景色以适配暗夜模式，保留边框和字体设置
-        # 如果是暗夜模式，背景设为微透明或深色；如果是亮色模式，背景设为微灰
+        
         bg_color = "rgba(255, 255, 255, 0.05)" if isDarkTheme() else "rgba(0, 0, 0, 0.03)"
         border_color = "rgba(255, 255, 255, 0.1)" if isDarkTheme() else "rgba(0, 0, 0, 0.08)"
         
         self.build_log.setStyleSheet(f"""
-            TextEdit {{
+            QTextEdit {{
                 background-color: {bg_color};
                 border: 1px solid {border_color};
                 border-radius: {RADIUS["small"]}px;
@@ -446,14 +453,12 @@ class BuildPage(ScrollArea):
         
         if bios_requirements:
             bios_header = StrongBodyLabel("1. BIOS/UEFI 设置要求：")
-            # 警告色通常在暗夜模式下也可见，或使用主题色
             bios_header.setStyleSheet(f"color: {COLORS['warning_text']}; font-size: 14px;")
             self.instructions_after_content_layout.addWidget(bios_header)
             
             bios_text = "\n".join(["  • {}".format(req) for req in bios_requirements])
             bios_label = BodyLabel(bios_text)
             bios_label.setWordWrap(True)
-            # 移除硬编码颜色 #424242
             bios_label.setStyleSheet("line-height: 1.6;")
             self.instructions_after_content_layout.addWidget(bios_label)
             
@@ -473,7 +478,6 @@ class BuildPage(ScrollArea):
         
         usb_label = BodyLabel(usb_mapping_instructions)
         usb_label.setWordWrap(True)
-        # 移除硬编码颜色 #424242，以适配暗夜模式
         usb_label.setStyleSheet("line-height: 1.6;")
         self.instructions_after_content_layout.addWidget(usb_label)
         

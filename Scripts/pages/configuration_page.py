@@ -1,12 +1,21 @@
 import os
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
-from PyQt6.QtCore import Qt
-from qfluentwidgets import (
-    ScrollArea, SubtitleLabel, BodyLabel, FluentIcon, 
-    PushSettingCard, ExpandGroupSettingCard, 
-    SettingCard, PushButton, isDarkTheme
-)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
+from PyQt5.QtCore import Qt, pyqtSignal
+
+try:
+    from qfluentwidgets import (
+        ScrollArea, SubtitleLabel, BodyLabel, FluentIcon, 
+        PushSettingCard, ExpandGroupSettingCard, 
+        SettingCard, PushButton, isDarkTheme, StrongBodyLabel,
+        CardGroupWidget
+    )
+except ImportError:
+    from qfluentwidgets_compat import (
+        ScrollArea, SubtitleLabel, BodyLabel, FluentIcon, 
+        PushButton, isDarkTheme, StrongBodyLabel, SettingCard,
+        PushSettingCard, ExpandGroupSettingCard, CardGroupWidget
+    )
 
 from Scripts.custom_dialogs import show_macos_version_dialog
 from Scripts.styles import SPACING, COLORS
