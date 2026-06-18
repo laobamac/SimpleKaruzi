@@ -1,3 +1,13 @@
+## 此项目自2026.06.18进入存档状态，非极特殊情况（比如世界毁灭）不再发布任何更新。
+## 光影交错，长风入怀，未来再见
+
+----
+
+## This project entered archival status as of June 18, 2026. Unless something extremely unusual happens (like the end of the world), no further updates will be released.
+## Where light and shadow cross, the wind blows through. See you in the future.
+
+----
+
 <div align="center">
   <img src="icon.png" alt="SimpleKaruzi Logo" width="220" height="220">
   <h3 align="center">SimpleKaruzi</h3>
