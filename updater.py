@@ -9,7 +9,10 @@ import time
 import json
 import urllib.request
 import ssl
-from PyQt6.QtCore import QThread, pyqtSignal, QObject
+try:
+    from PyQt5.QtCore import QThread, pyqtSignal, QObject
+except ImportError:
+    from PyQt6.QtCore import QThread, pyqtSignal, QObject
 
 from Scripts.custom_dialogs import show_update_dialog, show_info, show_confirmation
 

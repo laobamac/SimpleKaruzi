@@ -3,7 +3,10 @@ import sys
 import logging
 from datetime import datetime
 
-from PyQt6.QtCore import QObject, pyqtSignal
+try:
+    from PyQt5.QtCore import QObject, pyqtSignal
+except ImportError:
+    from PyQt6.QtCore import QObject, pyqtSignal
 
 from Scripts import acpi_guru
 from Scripts import compatibility_checker
