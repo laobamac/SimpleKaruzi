@@ -1,14 +1,26 @@
 from typing import Optional, Tuple, TYPE_CHECKING
 
-from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QFrame
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
-from qfluentwidgets import FluentIcon, BodyLabel, CardWidget, StrongBodyLabel, isDarkTheme, themeColor, qconfig
+try:
+    from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QFrame
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtGui import QColor
+except ImportError:
+    from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QFrame
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QColor
+
+try:
+    from qfluentwidgets import FluentIcon, BodyLabel, CardWidget, StrongBodyLabel, isDarkTheme, themeColor, qconfig
+except ImportError:
+    from qfluentwidgets_compat import FluentIcon, BodyLabel, CardWidget, StrongBodyLabel, isDarkTheme, themeColor, qconfig
 
 from .styles import SPACING, COLORS, RADIUS
 
 if TYPE_CHECKING:
-    from qfluentwidgets import GroupHeaderCardWidget, CardGroupWidget
+    try:
+        from qfluentwidgets import GroupHeaderCardWidget, CardGroupWidget
+    except ImportError:
+        from qfluentwidgets_compat import GroupHeaderCardWidget, CardGroupWidget
 
 class FooterWidget(QWidget):
     """
@@ -21,25 +33,22 @@ class FooterWidget(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(4)
         
-        # 版权信息
         self.footer_label = BodyLabel(
             "Author: <a href='https://github.com/laobamac' style='text-decoration: none;'>laobamac</a> | "
             "Project: <a href='https://github.com/laobamac/SimpleKaruzi' style='text-decoration: none;'>SimpleKaruzi</a>"
         )
-        self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.footer_label.setAlignment(Qt.AlignCenter)
         self.footer_label.setOpenExternalLinks(True)
         
-        # 协议信息
         self.license_label = BodyLabel(
             "Licensed under <a href='https://github.com/laobamac/SimpleKaruzi/blob/main/LICENSE' style='text-decoration: none;'>AGPL-3.0 License</a>"
         )
-        self.license_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.license_label.setAlignment(Qt.AlignCenter)
         self.license_label.setOpenExternalLinks(True)
         
         self.layout.addWidget(self.footer_label)
         self.layout.addWidget(self.license_label)
         
-        # 初始化样式并监听主题变化
         self.update_style()
         qconfig.themeChanged.connect(self.update_style)
 
@@ -77,9 +86,7 @@ class ProgressStatusHelper:
         self.progress_bar = progress_bar
         self.progress_container = progress_container
         
-        # 监听主题变化以更新进度条文字颜色
         qconfig.themeChanged.connect(self._on_theme_changed)
-        # 保存当前状态以便刷新
         self._current_status = None
         self._current_message = ""
     
@@ -144,7 +151,6 @@ class ThemeAwareCardWidget(CardWidget):
         self.custom_widget = custom_widget
         self.ui_utils = ui_utils
         
-        # 初始化 UI 结构
         self._init_layout()
         
         self.update_style()
@@ -157,29 +163,29 @@ class ThemeAwareCardWidget(CardWidget):
         self.main_layout.setSpacing(SPACING["large"])
         
         self.icon_label = QLabel()
-        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.icon_label.setFixedSize(52, 52) # 40 + 12
-        self.main_layout.addWidget(self.icon_label, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.icon_label.setFixedSize(52, 52)
+        self.main_layout.addWidget(self.icon_label, 0, Qt.AlignVCenter)
         
-        self.text_layout = QVBoxLayout()
-        self.text_layout.setSpacing(SPACING["small"])
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(SPACING["small"])
         
         self.title_label = None
         if self.title_text:
             self.title_label = StrongBodyLabel(self.title_text)
-            self.text_layout.addWidget(self.title_label)
+            text_layout.addWidget(self.title_label)
         
         self.body_label = None
         if self.body_text:
             self.body_label = BodyLabel(self.body_text)
             self.body_label.setWordWrap(True)
             self.body_label.setOpenExternalLinks(True)
-            self.text_layout.addWidget(self.body_label)
+            text_layout.addWidget(self.body_label)
         
         if self.custom_widget:
-            self.text_layout.addWidget(self.custom_widget)
+            text_layout.addWidget(self.custom_widget)
         
-        self.main_layout.addLayout(self.text_layout)
+        self.main_layout.addLayout(text_layout)
 
     def update_style(self):
         """根据当前主题刷新样式表和图标"""
@@ -229,7 +235,7 @@ class UIUtils:
     def build_icon_label(self, icon: FluentIcon, color: str, size: int = 32) -> QLabel:
         label = QLabel()
         label.setPixmap(icon.icon(color=color).pixmap(size, size))
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setAlignment(Qt.AlignCenter)
         label.setFixedSize(size + 12, size + 12)
         return label
 
@@ -247,13 +253,12 @@ class UIUtils:
         if not icon or not color_hex:
             return icon
         
-        tint = QColor(color_hex)
-        return icon.colored(tint, tint)
+        return icon
 
     def get_compatibility_icon(self, compat_tuple: Optional[Tuple[Optional[str], Optional[str]]]) -> FluentIcon:
         if not compat_tuple or compat_tuple == (None, None):
-            return self.colored_icon(FluentIcon.CLOSE, COLORS["error"])
-        return self.colored_icon(FluentIcon.ACCEPT, COLORS["success"])
+            return FluentIcon.CLOSE
+        return FluentIcon.ACCEPT
 
     def add_group_with_indent(self, card: "GroupHeaderCardWidget", icon: FluentIcon, title: str, content: str, widget: Optional[QWidget] = None, indent_level: int = 0) -> "CardGroupWidget":
         if widget is None:
@@ -269,14 +274,10 @@ class UIUtils:
         return group
 
     def create_step_indicator(self, step_number: int, total_steps: int = 4, color: str = "#0078D4") -> BodyLabel:
-        # 暗夜模式下调整步骤指示器的颜色，使其更亮
         if isDarkTheme() and color == "#0078D4":
-            color = themeColor().name() # 使用主题色
+            color = themeColor().name()
             
         label = BodyLabel("STEP {} OF {}".format(step_number, total_steps))
-        # 增加主题监听可能需要将此 Label 也封装，但通常步骤条不那么敏感，这里保持静态或根据需求封装
-        # 为了简单，这里只在创建时判断。如果需要动态切换，需要类似的 ThemeAwareLabel 封装。
-        # 鉴于步骤条通常在刷新页面时重建，这里问题不大。
         label.setStyleSheet("color: {}; font-weight: bold;".format(color))
         return label
 
@@ -286,7 +287,6 @@ class UIUtils:
         return spacer
 
     def custom_card(self, card_type: str = "note", icon: Optional[FluentIcon] = None, title: str = "", body: str = "", custom_widget: Optional[QWidget] = None, parent: Optional[QWidget] = None) -> CardWidget:
-        # 使用新的 ThemeAwareCardWidget 替代原始 CardWidget
         return ThemeAwareCardWidget(card_type, icon, title, body, custom_widget, self, parent)
 
     def create_footer(self):

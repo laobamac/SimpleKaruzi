@@ -1,13 +1,21 @@
 import os
 import threading
 
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QLabel
-from qfluentwidgets import (
-    PushButton, SubtitleLabel, BodyLabel, CardWidget, FluentIcon, 
-    StrongBodyLabel, PrimaryPushButton, ProgressBar,
-    IconWidget, ExpandGroupSettingCard, isDarkTheme
-)
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QLabel
+
+try:
+    from qfluentwidgets import (
+        PushButton, SubtitleLabel, BodyLabel, CardWidget, FluentIcon, 
+        StrongBodyLabel, PrimaryPushButton, ProgressBar,
+        IconWidget, ExpandGroupSettingCard, isDarkTheme, CardGroupWidget
+    )
+except ImportError:
+    from qfluentwidgets_compat import (
+        PushButton, SubtitleLabel, BodyLabel, CardWidget, FluentIcon, 
+        StrongBodyLabel, ProgressBar, isDarkTheme, PrimaryPushButton,
+        IconWidget, ExpandGroupSettingCard, CardGroupWidget
+    )
 
 from Scripts.datasets import os_data
 from Scripts.custom_dialogs import show_info, show_confirmation

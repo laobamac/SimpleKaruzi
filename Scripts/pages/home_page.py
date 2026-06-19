@@ -2,13 +2,20 @@ import os
 import json
 import urllib.request
 import ssl
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject, pyqtSlot, QTimer
-from qfluentwidgets import (
-    SubtitleLabel, BodyLabel, CardWidget, StrongBodyLabel, 
-    FluentIcon, ScrollArea, themeColor, isDarkTheme, qconfig
-)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject, pyqtSlot, QTimer
+
+try:
+    from qfluentwidgets import (
+        SubtitleLabel, BodyLabel, CardWidget, StrongBodyLabel, 
+        FluentIcon, ScrollArea, themeColor, isDarkTheme, qconfig
+    )
+except ImportError:
+    from qfluentwidgets_compat import (
+        SubtitleLabel, BodyLabel, CardWidget, StrongBodyLabel, 
+        FluentIcon, ScrollArea, themeColor, isDarkTheme, qconfig
+    )
 
 from Scripts.styles import COLORS, SPACING
 from Scripts import ui_utils
@@ -45,7 +52,7 @@ class HomePage(ScrollArea):
         self.expandLayout = QVBoxLayout(self.scrollWidget)
         self.ui_utils = ui_utils_instance if ui_utils_instance else ui_utils.UIUtils()
         
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         self.enableTransparentBackground()
@@ -131,14 +138,14 @@ class HomePage(ScrollArea):
         if os.path.exists(icon_path):
             pixmap = QPixmap(icon_path)
             if not pixmap.isNull():
-                pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                pixmap = pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 icon_label.setPixmap(pixmap)
         else:
             icon_label = self.ui_utils.build_icon_label(FluentIcon.CARE_LEFT_SOLID, COLORS["primary"], size=64)
 
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        icon_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
-        hero_layout.addWidget(icon_label, 0, Qt.AlignmentFlag.AlignRight)
+        hero_layout.addWidget(icon_label, 0, Qt.AlignRight)
 
         return hero_card
 
@@ -271,7 +278,7 @@ class HomePage(ScrollArea):
         icon_container.setFixedWidth(40)
         icon_layout = QVBoxLayout(icon_container)
         icon_layout.setContentsMargins(0, 0, 0, 0)
-        icon_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+        icon_layout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         
         row_icon = self.ui_utils.build_icon_label(icon, COLORS["primary"], size=24)
         icon_layout.addWidget(row_icon)
@@ -294,7 +301,7 @@ class HomePage(ScrollArea):
 
     def _create_divider(self):
         divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setFrameShape(QFrame.HLine)
         divider.setProperty("class", "divider")
         return divider
 

@@ -1,22 +1,37 @@
 import os
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFileDialog
-)
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, QObject
-from qfluentwidgets import (
-    ScrollArea, BodyLabel, PushButton, LineEdit, FluentIcon,
-    SettingCardGroup, SwitchSettingCard, ComboBoxSettingCard,
-    PushSettingCard, SpinBox,
-    OptionsConfigItem, OptionsValidator, HyperlinkCard,
-    SubtitleLabel, SettingCard, setTheme, Theme, PrimaryPushSettingCard
-)
+try:
+    from PyQt5.QtWidgets import (
+        QWidget, QVBoxLayout, QHBoxLayout, QFileDialog
+    )
+    from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, QObject
+except ImportError:
+    from PyQt6.QtWidgets import (
+        QWidget, QVBoxLayout, QHBoxLayout, QFileDialog
+    )
+    from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, QObject
+
+try:
+    from qfluentwidgets import (
+        ScrollArea, BodyLabel, PushButton, LineEdit, FluentIcon,
+        SettingCardGroup, SwitchSettingCard, ComboBoxSettingCard,
+        PushSettingCard, SpinBox,
+        OptionsConfigItem, OptionsValidator, HyperlinkCard,
+        SubtitleLabel, SettingCard, setTheme, Theme, PrimaryPushSettingCard
+    )
+except ImportError:
+    from qfluentwidgets_compat import (
+        ScrollArea, BodyLabel, PushButton, LineEdit, FluentIcon,
+        SettingCardGroup, SwitchSettingCard, ComboBoxSettingCard,
+        PushSettingCard, SpinBox,
+        OptionsConfigItem, OptionsValidator, HyperlinkCard,
+        SubtitleLabel, SettingCard, setTheme, Theme, PrimaryPushSettingCard
+    )
 
 from Scripts import ui_utils
 from Scripts.custom_dialogs import show_confirmation, show_info, show_download_dialog
 from Scripts.styles import COLORS, SPACING
 import updater
 
-# === SKSP Worker ===
 class SKSPCheckWorker(QObject):
     finished = pyqtSignal(bool, dict)
     def __init__(self, backend):
@@ -49,12 +64,11 @@ class SKSPDownloadWorker(QObject):
         except Exception as e:
             self.finished.emit(False, str(e))
 
-# === App 更新下载 Worker (已修复) ===
 class AppUpdateWorker(QObject):
     update_ready = pyqtSignal(str) 
     progress = pyqtSignal(int, str)
     error = pyqtSignal(str)
-    finished = pyqtSignal() # [修复] 补上缺失的信号
+    finished = pyqtSignal()
 
     def __init__(self, updater_inst, download_info, cancel_callback=None):
         super().__init__()
@@ -68,7 +82,6 @@ class AppUpdateWorker(QObject):
             self.progress.emit(p, m)
             
         try:
-            # 传入取消检查函数
             new_path = self.updater.perform_update_process(
                 self.info, 
                 progress_callback=callback,
@@ -76,8 +89,6 @@ class AppUpdateWorker(QObject):
             )
             self.update_ready.emit(new_path)
         except Exception as e:
-            # 如果是用户取消，通常抛出特定异常，这里统一当作错误处理或忽略
-            # 如果是 "用户取消" 异常，前端可以选择不弹错误框
             self.error.emit(str(e))
         finally:
             self.finished.emit()
@@ -96,10 +107,9 @@ class SettingsPage(ScrollArea):
         
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.enableTransparentBackground()
         
-        # 线程引用
         self.sksp_check_thread = None
         self.sksp_check_worker = None
         self.sksp_dl_thread = None
@@ -156,7 +166,7 @@ class SettingsPage(ScrollArea):
         bottom_layout.addStretch()
 
         reset_btn = PushButton("重置所有设置", self.bottom_widget)
-        reset_btn.setIcon(FluentIcon.CANCEL)
+        reset_btn.setIcon(FluentIcon.CANCEL.icon())
         reset_btn.clicked.connect(self.reset_to_defaults)
         bottom_layout.addWidget(reset_btn)
 
@@ -167,7 +177,7 @@ class SettingsPage(ScrollArea):
         self.expandLayout.addSpacing(SPACING["small"])
 
         for card in self.findChildren(SettingCard):
-            card.setIconSize(18, 18)
+            pass
 
     def _update_widget_value(self, widget, value):
         if widget is None: return
@@ -229,7 +239,6 @@ class SettingsPage(ScrollArea):
         group.addSettingCard(self.auto_sksp_card)
         return group
 
-    # === SKSP 逻辑 ===
     def refresh_sksp_status(self):
         if hasattr(self.controller.backend, 'o'):
             exists, version = self.controller.backend.o.check_sksp_status()
@@ -302,7 +311,6 @@ class SettingsPage(ScrollArea):
         elif msg != "用户取消":
             show_info("失败", "更新失败: {}".format(msg))
 
-    # === 软件更新部分 ===
     def create_update_settings_group(self):
         group = SettingCardGroup("软件更新", self.scrollWidget)
         
@@ -390,11 +398,8 @@ class SettingsPage(ScrollArea):
         self.controller.update_status("正在下载更新，请勿关闭...", "INFO")
         
         self.update_dialog = show_download_dialog()
-        # 这里不需要 update_dialog.show()，因为 show_download_dialog 内部通常已经 exec 或者 show 了
-        # 如果 show_download_dialog 是非模态的，可以保留 show()。假设它是 CustomDialogs 里的非模态。
         
         self.app_dl_thread = QThread()
-        # 传递取消回调 self.update_dialog.is_canceled
         self.app_dl_worker = AppUpdateWorker(self.upd_instance, info, cancel_callback=self.update_dialog.is_canceled)
         self.app_dl_worker.moveToThread(self.app_dl_thread)
         
@@ -420,7 +425,6 @@ class SettingsPage(ScrollArea):
         if self.update_dialog:
             self.update_dialog.close()
         
-        # 如果是“用户取消”，则不弹报错框
         if "用户取消" not in str(err_msg):
             show_info("更新失败", f"错误详情: {err_msg}")
 
