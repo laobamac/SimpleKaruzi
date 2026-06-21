@@ -4,7 +4,7 @@ import platform
 import traceback
 import shutil
 
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QObject, QThread, pyqtSlot
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QObject, QThread, pyqtSlot, QTranslator, QLocale
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication
 from qfluentwidgets import (
@@ -145,16 +145,20 @@ class OCS(FluentWindow):
         self.sksp_thread.start()
 
     def _on_startup_sksp_update_found(self, remote_info):
-        title = "发现 SKSP 资源包更新"
-        content = (
-            f"检测到新版本的 SKSP 资源包 (v{remote_info.get('version')})。<br>"
-            f"发布日期: {remote_info.get('release_date', '未知')}<br><br>"
-            f"{remote_info.get('description', '')}<br><br>"
+        title = self.tr("发现 SKSP 资源包更新")
+        content = self.tr(
+            "检测到新版本的 SKSP 资源包 (v{})。<br>"
+            "发布日期: {}<br><br>"
+            "{}<br><br>"
             "更新资源包可以提高硬件识别准确率和驱动兼容性。<br>"
             "是否立即更新？"
+        ).format(
+            remote_info.get('version'),
+            remote_info.get('release_date', self.tr('未知')),
+            remote_info.get('description', '')
         )
         
-        if show_confirmation(title, content, yes_text="立即更新", no_text="稍后"):
+        if show_confirmation(title, content, yes_text=self.tr("立即更新"), no_text=self.tr("稍后")):
             if hasattr(self, 'settingsPage'):
                 self.switchTo(self.settingsPage)
                 self.settingsPage.start_sksp_download()
@@ -261,31 +265,31 @@ class OCS(FluentWindow):
         self.addSubInterface(
             self.homePage,
             FluentIcon.HOME,
-            "主页",
+            self.tr("主页"),
             NavigationItemPosition.TOP
         )
         self.addSubInterface(
             self.SelectHardwareReportPage,
             FluentIcon.FOLDER_ADD,
-            "1. 选择硬件报告",
+            self.tr("1. 选择硬件报告"),
             NavigationItemPosition.TOP
         )
         self.addSubInterface(
             self.compatibilityPage,
             FluentIcon.CHECKBOX,
-            "2. 检查兼容性",
+            self.tr("2. 检查兼容性"),
             NavigationItemPosition.TOP
         )
         self.addSubInterface(
             self.configurationPage,
             FluentIcon.EDIT,
-            "3. 配置 OpenCore EFI",
+            self.tr("3. 配置 OpenCore EFI"),
             NavigationItemPosition.TOP
         )
         self.addSubInterface(
             self.buildPage,
             FluentIcon.DEVELOPER_TOOLS,
-            "4. 生成与预览",
+            self.tr("4. 生成与预览"),
             NavigationItemPosition.TOP
         )
 
@@ -293,7 +297,7 @@ class OCS(FluentWindow):
         self.addSubInterface(
             self.settingsPage,
             FluentIcon.SETTING,
-            "设置",
+            self.tr("设置"),
             NavigationItemPosition.BOTTOM
         )
 
@@ -303,7 +307,7 @@ class OCS(FluentWindow):
     def update_status(self, message, status_type="INFO"):
         if status_type == "success":
             InfoBar.success(
-                title="成功",
+                title=self.tr("成功"),
                 content=message,
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
@@ -313,7 +317,7 @@ class OCS(FluentWindow):
             )
         elif status_type == "ERROR":
             InfoBar.error(
-                title="错误",
+                title=self.tr("错误"),
                 content=message,
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
@@ -323,7 +327,7 @@ class OCS(FluentWindow):
             )
         elif status_type == "WARNING":
             InfoBar.warning(
-                title="警告",
+                title=self.tr("警告"),
                 content=message,
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
@@ -333,7 +337,7 @@ class OCS(FluentWindow):
             )
         else:
             InfoBar.info(
-                title="提示",
+                title=self.tr("提示"),
                 content=message,
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
@@ -346,31 +350,31 @@ class OCS(FluentWindow):
         if require_hardware_report:
             if not self.hardware_state.hardware_report:
                 if show_status:
-                    self.update_status("请先选择硬件报告", "WARNING")
+                    self.update_status(self.tr("请先选择硬件报告"), "WARNING")
                 return False
             
         if require_dsdt:
             if not self.backend.ac._ensure_dsdt():
                 if show_status:
-                    self.update_status("请先加载 ACPI 表", "WARNING")
+                    self.update_status(self.tr("请先加载 ACPI 表"), "WARNING")
                 return False
         
         if check_compatibility_error:
             if self.hardware_state.compatibility_error:
                 if show_status:
-                    self.update_status("检测到不兼容的硬件，请选择其他硬件报告并重试", "WARNING")
+                    self.update_status(self.tr("检测到不兼容的硬件，请选择其他硬件报告并重试"), "WARNING")
                 return False
         
         if require_darwin_version:
             if not self.macos_state.darwin_version:
                 if show_status:
-                    self.update_status("请先选择目标 macOS 版本", "WARNING")
+                    self.update_status(self.tr("请先选择目标 macOS 版本"), "WARNING")
                 return False
 
         if require_customized_hardware:
             if not self.hardware_state.customized_hardware:
                 if show_status:
-                    self.update_status("请重新加载硬件报告并选择目标 macOS 版本以继续", "WARNING")
+                    self.update_status(self.tr("请重新加载硬件报告并选择目标 macOS 版本以继续"), "WARNING")
                 return False
         
         return True
@@ -414,11 +418,42 @@ class OCS(FluentWindow):
         sys.excepthook = handle_exception
 
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+
 if __name__ == "__main__":
     backend = Backend()
     
     app = QApplication(sys.argv)
     set_default_gui_handler(app)
+    
+    translator = QTranslator()
+    
+    lang_setting = backend.settings.get("language")
+    
+    qm_filename = ""
+    
+    if lang_setting == "Auto" or not lang_setting:
+        locale = QLocale.system()
+        if locale.language() == QLocale.Language.Chinese:
+            qm_filename = "zh_CN.qm"
+        else:
+            qm_filename = "en_US.qm"
+    else:
+        if lang_setting == "zh_CN":
+            qm_filename = "zh_CN.qm"
+        elif lang_setting == "en_US":
+            qm_filename = "en_US.qm"
+    
+    if qm_filename:
+        qm_path = resource_path(os.path.join("Translations", qm_filename))
+        if os.path.exists(qm_path):
+            if translator.load(qm_path):
+                app.installTranslator(translator)
     
     saved_theme = backend.settings.get("theme")
     if saved_theme == "Light":

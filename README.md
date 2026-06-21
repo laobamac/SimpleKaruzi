@@ -29,6 +29,7 @@
     一款专门用于简化 <a href="https://github.com/acidanthera/OpenCorePkg">OpenCore</a> EFI 创建过程的工具，通过自动化基本设置流程并提供标准化配置，旨在减少手动操作，同时确保您 Hackintosh 之旅的准确性。
     <br />
     <br />
+    <a href="README-en.md">English</a> •
     <a href="#-功能特色">功能特色</a> •
     <a href="#-如何使用">如何使用</a> •
     <a href="#-贡献指南">贡献指南</a> •

@@ -89,14 +89,14 @@ class HomePage(ScrollArea):
         self.expandLayout.addSpacing(SPACING["small"])
 
     def _create_title_label(self):
-        self.title_label = SubtitleLabel("欢迎使用 SimpleKaruzi")
+        self.title_label = SubtitleLabel(self.tr("欢迎使用 SimpleKaruzi"))
         return self.title_label
 
     def _create_notice_placeholder(self):
         """创建一个初始隐藏的公告卡片占位"""
         card = self.ui_utils.custom_card(
             card_type="info",
-            title="正在获取公告...",
+            title=self.tr("正在获取公告..."),
             body=""
         )
         card.setVisible(False) # 默认隐藏
@@ -112,13 +112,13 @@ class HomePage(ScrollArea):
         hero_text = QVBoxLayout()
         hero_text.setSpacing(SPACING["medium"])
 
-        self.hero_title = StrongBodyLabel("简介")
+        self.hero_title = StrongBodyLabel(self.tr("简介"))
         hero_text.addWidget(self.hero_title)
 
-        self.hero_body = BodyLabel(
+        self.hero_body = BodyLabel(self.tr(
             "这是一个专门用于简化 OpenCore EFI 制作流程的工具，通过自动化核心设置步骤并提供标准化配置，"
             "旨在减少手动操作的工作量，同时确保黑苹果折腾过程中的准确性。"
-        )
+        ))
         self.hero_body.setWordWrap(True)
         hero_text.addWidget(self.hero_body)
 
@@ -180,7 +180,7 @@ class HomePage(ScrollArea):
 
         # 获取数据
         msg_type = data.get("type", "info")
-        title = data.get("title", "公告")
+        title = data.get("title", self.tr("公告"))
         message = data.get("message", "")
 
         # 移除旧的占位卡片
@@ -211,25 +211,25 @@ class HomePage(ScrollArea):
     def _create_note_card(self):
         return self.ui_utils.custom_card(
             card_type="note",
-            title="OCLP-Mod III - 现已支持 macOS Tahoe 26！",
+            title=self.tr("OCLP-Mod III - 现已支持 macOS Tahoe 26！"),
             body=(
-                "期待已久的OCLP-Mod 3.x.x 版本已经发布，为社区带来了<b>对macOS Tahoe 26的初始支持</b>！<br><br>"
-                "<b>请注意：</b><br>"
-                "- 只有来自<a href=\"https://github.com/laobamac/OCLP-Mod\" style=\"color: #0078D4; text-decoration: none;\">laobamac/OCLP-Mod</a>仓库的OCLP-Mod 3.x.x为macOS Tahoe 26提供了早期补丁支持。<br>"
-                "- 官方的Dortania版本或旧版补丁<b>将无法工作</b>于macOS Tahoe 26。"
+                self.tr("期待已久的OCLP-Mod 3.x.x 版本已经发布，为社区带来了<b>对macOS Tahoe 26的初始支持</b>！<br><br>") +
+                self.tr("<b>请注意：</b><br>") +
+                self.tr("- 只有来自<a href=\"https://github.com/laobamac/OCLP-Mod\" style=\"color: #0078D4; text-decoration: none;\">laobamac/OCLP-Mod</a>仓库的OCLP-Mod 3.x.x为macOS Tahoe 26提供了早期补丁支持。<br>") +
+                self.tr("- 官方的Dortania版本或旧版补丁<b>将无法工作</b>于macOS Tahoe 26。")
             )
         )
 
     def _create_warning_card(self):
         return self.ui_utils.custom_card(
             card_type="warning",
-            title="警告",
+            title=self.tr("警告"),
             body=(
-                "虽然SimpleKaruzi显著减少了设置时间，但Hackintosh之旅仍然需要：<br><br>"
-                "- 理解<a href=\"https://dortania.github.io/OpenCore-Install-Guide/\" style=\"color: #F57C00; text-decoration: none;\">Dortania指南</a>中的基本概念<br>"
-                "- 在安装过程中进行测试和故障排除<br>"
-                "- 耐心和坚持解决出现的任何问题<br><br>"
-                "我们的工具不能保证第一次尝试就能成功安装，但它应该能帮助您开始。"
+                self.tr("虽然SimpleKaruzi显著减少了设置时间，但Hackintosh之旅仍然需要：<br><br>") +
+                self.tr("- 理解<a href=\"https://dortania.github.io/OpenCore-Install-Guide/\" style=\"color: #F57C00; text-decoration: none;\">Dortania指南</a>中的基本概念<br>") +
+                self.tr("- 在安装过程中进行测试和故障排除<br>") +
+                self.tr("- 耐心和坚持解决出现的任何问题<br><br>") +
+                self.tr("我们的工具不能保证第一次尝试就能成功安装，但它应该能帮助您开始。")
             )
         )
 
@@ -239,14 +239,14 @@ class HomePage(ScrollArea):
         guide_layout.setContentsMargins(SPACING["large"], SPACING["large"], SPACING["large"], SPACING["large"])
         guide_layout.setSpacing(SPACING["medium"])
 
-        self.guide_title = StrongBodyLabel("快速开始")
+        self.guide_title = StrongBodyLabel(self.tr("快速开始"))
         guide_layout.addWidget(self.guide_title)
 
         step_items = [
-            (FluentIcon.FOLDER_ADD, "1. 选择硬件报告", "选择你要为其构建 EFI 的目标系统的硬件报告。"),
-            (FluentIcon.CHECKBOX, "2. 检查兼容性", "审查硬件与 macOS 的兼容性。"),
-            (FluentIcon.EDIT, "3. 配置设置", "自定义 OpenCore EFI 的 ACPI 补丁、驱动（Kexts）和配置。"),
-            (FluentIcon.DEVELOPER_TOOLS, "4. 生成 EFI", "生成你的 OpenCore EFI。"),
+            (FluentIcon.FOLDER_ADD, self.tr("1. 选择硬件报告"), self.tr("选择你要为其构建 EFI 的目标系统的硬件报告。")),
+            (FluentIcon.CHECKBOX, self.tr("2. 检查兼容性"), self.tr("审查硬件与 macOS 的兼容性。")),
+            (FluentIcon.EDIT, self.tr("3. 配置设置"), self.tr("自定义 OpenCore EFI 的 ACPI 补丁、驱动（Kexts）和配置。")),
+            (FluentIcon.DEVELOPER_TOOLS, self.tr("4. 生成 EFI"), self.tr("生成你的 OpenCore EFI。")),
         ]
         
         self.guide_labels = [] 

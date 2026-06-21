@@ -49,8 +49,8 @@ class BuildPage(ScrollArea):
         
         header_layout = QVBoxLayout()
         header_layout.setSpacing(SPACING["small"])
-        title = SubtitleLabel("构建 OpenCore EFI")
-        subtitle = BodyLabel("构建准备安装的定制化 OpenCore EFI")
+        title = SubtitleLabel(self.tr("构建 OpenCore EFI"))
+        subtitle = BodyLabel(self.tr("构建准备安装的定制化 OpenCore EFI"))
         # 移除强制颜色，让主题自适应
         # subtitle.setStyleSheet("color: {};".format(COLORS["text_secondary"]))
         header_layout.addWidget(title)
@@ -66,8 +66,8 @@ class BuildPage(ScrollArea):
         
         self.instructions_after_build_card = self.ui_utils.custom_card(
             card_type="warning",
-            title="使用前必读",
-            body="在使用生成的 EFI 之前，请务必完成以下步骤：",
+            title=self.tr("使用前必读"),
+            body=self.tr("在使用生成的 EFI 之前，请务必完成以下步骤："),
             custom_widget=self.instructions_after_content,
             parent=self.scrollWidget
         )
@@ -81,18 +81,18 @@ class BuildPage(ScrollArea):
         build_control_layout.setContentsMargins(SPACING["large"], SPACING["large"], SPACING["large"], SPACING["large"])
         build_control_layout.setSpacing(SPACING["medium"])
 
-        title = StrongBodyLabel("构建控制")
+        title = StrongBodyLabel(self.tr("构建控制"))
         build_control_layout.addWidget(title)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(SPACING["medium"])
 
-        self.build_btn = PrimaryPushButton(FluentIcon.DEVELOPER_TOOLS, "开始构建")
+        self.build_btn = PrimaryPushButton(FluentIcon.DEVELOPER_TOOLS, self.tr("开始构建"))
         self.build_btn.clicked.connect(self.start_build)
         btn_layout.addWidget(self.build_btn)
         self.controller.build_btn = self.build_btn
 
-        self.open_result_btn = PrimaryPushButton(FluentIcon.FOLDER, "打开结果文件夹")
+        self.open_result_btn = PrimaryPushButton(FluentIcon.FOLDER, self.tr("打开结果文件夹"))
         self.open_result_btn.clicked.connect(self.open_result)
         self.open_result_btn.setEnabled(False)
         btn_layout.addWidget(self.open_result_btn)
@@ -112,7 +112,7 @@ class BuildPage(ScrollArea):
         self.status_icon_label.setFixedSize(28, 28)
         status_row.addWidget(self.status_icon_label)
         
-        self.progress_label = StrongBodyLabel("准备构建")
+        self.progress_label = StrongBodyLabel(self.tr("准备构建"))
         # 移除强制的 text_secondary 颜色，仅保留字体设置
         self.progress_label.setStyleSheet("font-size: 15px; font-weight: 600;")
         status_row.addWidget(self.progress_label)
@@ -146,10 +146,10 @@ class BuildPage(ScrollArea):
         log_card_layout.setContentsMargins(SPACING["large"], SPACING["large"], SPACING["large"], SPACING["large"])
         log_card_layout.setSpacing(SPACING["medium"])
 
-        log_title = StrongBodyLabel("构建日志")
+        log_title = StrongBodyLabel(self.tr("构建日志"))
         log_card_layout.addWidget(log_title)
         
-        log_description = BodyLabel("详细的构建过程信息和状态更新")
+        log_description = BodyLabel(self.tr("详细的构建过程信息和状态更新"))
         # 移除颜色硬编码
         log_description.setStyleSheet("font-size: 13px;")
         log_card_layout.addWidget(log_description)
@@ -197,10 +197,10 @@ class BuildPage(ScrollArea):
         status = "success" if done else "loading"
         
         if done:
-            message = "{} 完成！".format(title)
+            message = self.tr("{} 完成！").format(title)
         else:
-            step_text = steps[current_step_index] if current_step_index < len(steps) else "处理中"
-            step_counter = "步骤 {}/{}".format(current_step_index + 1, len(steps))
+            step_text = steps[current_step_index] if current_step_index < len(steps) else self.tr("处理中")
+            step_counter = self.tr("步骤 {}/{}").format(current_step_index + 1, len(steps))
             message = "{}: {}...".format(step_counter, step_text)
         
         if done:
@@ -215,33 +215,33 @@ class BuildPage(ScrollArea):
             self.progress_helper.update(status, message, final_progress)
         
         if done:
-            self.controller.backend.u.log_message("[构建] {} 完成！".format(title), "SUCCESS", to_build_log=True)
+            self.controller.backend.u.log_message(self.tr("[构建] {} 完成！").format(title), "SUCCESS", to_build_log=True)
         else:
-            step_text = steps[current_step_index] if current_step_index < len(steps) else "处理中"
-            self.controller.backend.u.log_message("[构建] 步骤 {}/{}: {}...".format(current_step_index + 1, len(steps), step_text), "INFO", to_build_log=True)
+            step_text = steps[current_step_index] if current_step_index < len(steps) else self.tr("处理中")
+            self.controller.backend.u.log_message(self.tr("[构建] 步骤 {}/{}: {}...").format(current_step_index + 1, len(steps), step_text), "INFO", to_build_log=True)
 
     def start_build(self):
         if not self.controller.validate_prerequisites():
             return
 
         if self.controller.macos_state.needs_oclp:
-            content = (
+            content = self.tr(
                 "1. 通过安装补丁 (OCLP/OCLP-Mod) 允许在新版 macOS 上恢复被放弃的 GPU 和 Broadcom WiFi 支持，并在 macOS Tahoe 26 上启用 AppleHDA。<br>"
                 "2. OCLP 需要禁用 SIP 以应用自定义内核补丁，这可能会导致系统不稳定、安全风险和更新问题。<br>"
                 "<b><font color=\"{info_color}\">关于 macOS Tahoe 26 的支持：</font></b><br>"
                 "要修补 macOS Tahoe 26，必须下载 OCLP-Mod 3.1.3 或更新版本，请访问我的仓库：<a href=\"https://github.com/laobamac/OCLP-Mod/releases\">laobamac/OCLP-Mod</a>。<br>"
                 "官方 Dortania 发布版或旧版补丁<b>将无法</b>在 macOS Tahoe 26 上工作。"
             ).format(error_color=COLORS["error"], info_color="#00BCD4")
-            if not show_confirmation("安装补丁警告", content):
+            if not show_confirmation(self.tr("安装补丁警告"), content):
                 return
 
         self.build_in_progress = True
         self.build_successful = False
         self.build_btn.setEnabled(False)
-        self.build_btn.setText("构建中...")
+        self.build_btn.setText(self.tr("构建中..."))
         self.open_result_btn.setEnabled(False)
         
-        self.progress_helper.update("loading", "准备构建...", 0)
+        self.progress_helper.update("loading", self.tr("准备构建..."), 0)
         
         self.instructions_after_build_card.setVisible(False)
         self.build_log.clear()
@@ -278,30 +278,30 @@ class BuildPage(ScrollArea):
         org_firmware_type = org_hardware_report.get("BIOS", {}).get("Firmware Type", "Unknown")
         firmware_type = hardware_report.get("BIOS", {}).get("Firmware Type", "Unknown")
         if org_firmware_type == "Legacy" and firmware_type == "UEFI":
-            requirements.append("启用 UEFI 模式（禁用 Legacy/CSM 兼容性支持模块）")
+            requirements.append(self.tr("启用 UEFI 模式（禁用 Legacy/CSM 兼容性支持模块）"))
 
         secure_boot = hardware_report.get("BIOS", {}).get("Secure Boot", "Unknown")
         if secure_boot != "Disabled":
-            requirements.append("禁用安全启动 (Secure Boot)")
+            requirements.append(self.tr("禁用安全启动 (Secure Boot)"))
         
         if hardware_report.get("Motherboard", {}).get("Platform") == "Desktop" and hardware_report.get("Motherboard", {}).get("Chipset") in chipset_data.IntelChipsets[112:]:
             resizable_bar_enabled = any(gpu_props.get("Resizable BAR", "Disabled") == "Enabled" for gpu_props in hardware_report.get("GPU", {}).values())
             if not resizable_bar_enabled:
-                requirements.append("启用 Above 4G Decoding")
-                requirements.append("禁用 Resizable BAR / Smart Access Memory")
+                requirements.append(self.tr("启用 Above 4G Decoding"))
+                requirements.append(self.tr("禁用 Resizable BAR / Smart Access Memory"))
                 
         return requirements
 
     def _build_opencore_efi(self, hardware_report, disabled_devices, smbios_model, macos_version, needs_oclp):
         steps = [
-            "正在复制 EFI 基础文件到结果文件夹",
-            "正在应用 ACPI 补丁",
-            "正在复制驱动 (Kexts) 并创建 config.plist 快照",
-            "正在生成 config.plist",
-            "正在清理未使用的驱动、资源和工具"
+            self.tr("正在复制 EFI 基础文件到结果文件夹"),
+            self.tr("正在应用 ACPI 补丁"),
+            self.tr("正在复制驱动 (Kexts) 并创建 config.plist 快照"),
+            self.tr("正在生成 config.plist"),
+            self.tr("正在清理未使用的驱动、资源和工具")
         ]
         
-        title = "构建 OpenCore EFI"
+        title = self.tr("构建 OpenCore EFI")
         current_step = 0
 
         progress = int((current_step / len(steps)) * 100)
@@ -312,7 +312,7 @@ class BuildPage(ScrollArea):
         backend.u.create_folder(backend.result_dir, remove_content=True)
 
         if not os.path.exists(backend.k.ock_files_dir):
-            raise Exception("目录 \"{}\" 不存在。".format(backend.k.ock_files_dir))
+            raise Exception(self.tr("目录 \"{}\" 不存在。").format(backend.k.ock_files_dir))
         
         source_efi_dir = os.path.join(backend.k.ock_files_dir, "OpenCorePkg")
         shutil.copytree(source_efi_dir, backend.result_dir, dirs_exist_ok=True)
@@ -321,7 +321,7 @@ class BuildPage(ScrollArea):
         config_data = backend.u.read_file(config_file)
         
         if not config_data:
-            raise Exception("错误：文件 {} 不存在。".format(config_file))
+            raise Exception(self.tr("错误：文件 {} 不存在。").format(config_file))
         
         progress = int((current_step / len(steps)) * 100)
         self.build_progress_signal.emit(title, steps, current_step, progress, False)
@@ -434,7 +434,7 @@ class BuildPage(ScrollArea):
                 else:
                     os.remove(file_path)
             except Exception as e:
-                backend.u.log_message("[构建] 无法删除文件 {}: {}".format(os.path.basename(file_path), e), level="WARNING", to_build_log=True)
+                backend.u.log_message(self.tr("[构建] 无法删除文件 {}: {}").format(os.path.basename(file_path), e), level="WARNING", to_build_log=True)
         
         self.build_progress_signal.emit(title, steps, len(steps) - 1, 100, True)
 
@@ -445,7 +445,7 @@ class BuildPage(ScrollArea):
                 item.widget().deleteLater()
         
         if bios_requirements:
-            bios_header = StrongBodyLabel("1. BIOS/UEFI 设置要求：")
+            bios_header = StrongBodyLabel(self.tr("1. BIOS/UEFI 设置要求："))
             # 警告色通常在暗夜模式下也可见，或使用主题色
             bios_header.setStyleSheet(f"color: {COLORS['warning_text']}; font-size: 14px;")
             self.instructions_after_content_layout.addWidget(bios_header)
@@ -459,13 +459,13 @@ class BuildPage(ScrollArea):
             
             self.instructions_after_content_layout.addSpacing(SPACING["medium"])
         
-        usb_header = StrongBodyLabel("{}. USB 端口定制：".format(2 if bios_requirements else 1))
+        usb_header = StrongBodyLabel(self.tr("{}. USB 端口定制：").format(2 if bios_requirements else 1))
         usb_header.setStyleSheet(f"color: {COLORS['warning_text']}; font-size: 14px;")
         self.instructions_after_content_layout.addWidget(usb_header)
         
         path_sep = "\\" if platform.system() == "Windows" else "/"
         
-        usb_mapping_instructions = (
+        usb_mapping_instructions = self.tr(
             "1. 使用 USBToolBox 工具映射 USB 端口<br>"
             "2. 将创建的 UTBMap.kext 添加到 EFI{path_sep}OC{path_sep}Kexts 文件夹中并启用<br>"
             "3. 从 EFI{path_sep}OC{path_sep}Kexts 文件夹和config.plist中删除 UTBDefault.kext<br>"
@@ -485,37 +485,37 @@ class BuildPage(ScrollArea):
         
         if success:
             self.log_card.setVisible(False)
-            self.progress_helper.update("success", "构建成功完成！", 100)
+            self.progress_helper.update("success", self.tr("构建成功完成！"), 100)
             
             self.show_post_build_instructions(bios_requirements)
             self._load_configs_after_build()
             
-            self.build_btn.setText("开始构建")
+            self.build_btn.setText(self.tr("开始构建"))
             self.build_btn.setEnabled(True)
             self.open_result_btn.setEnabled(True)
             
-            success_message = "你的 OpenCore EFI 已成功构建！"
+            success_message = self.tr("你的 OpenCore EFI 已成功构建！")
             if bios_requirements is not None:
-                success_message += " 请查阅下方的使用前重要说明。"
+                success_message += self.tr(" 请查阅下方的使用前重要说明。")
             
             self.controller.update_status(success_message, "success")
         else:
-            self.progress_helper.update("error", "构建 OpenCore EFI 失败", None)
+            self.progress_helper.update("error", self.tr("构建 OpenCore EFI 失败"), None)
             
             self.config_editor.setVisible(False)
             
-            self.build_btn.setText("重试构建")
+            self.build_btn.setText(self.tr("重试构建"))
             self.build_btn.setEnabled(True)
             self.open_result_btn.setEnabled(False)
             
-            self.controller.update_status("构建过程中发生错误，请检查日志以获取详细信息。", "error")
+            self.controller.update_status(self.tr("构建过程中发生错误，请检查日志以获取详细信息。"), "error")
 
     def open_result(self):
         result_dir = self.controller.backend.result_dir
         try:
             self.controller.backend.u.open_folder(result_dir)
         except Exception as e:
-            self.controller.update_status("无法打开结果文件夹：{}".format(e), "warning")
+            self.controller.update_status(self.tr("无法打开结果文件夹：{}").format(e), "warning")
 
     def _load_configs_after_build(self):
         backend = self.controller.backend

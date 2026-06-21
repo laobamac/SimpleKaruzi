@@ -1,7 +1,7 @@
 from typing import Optional, Tuple, TYPE_CHECKING
 
 from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QFrame
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QCoreApplication
 from PyQt6.QtGui import QColor
 from qfluentwidgets import FluentIcon, BodyLabel, CardWidget, StrongBodyLabel, isDarkTheme, themeColor, qconfig
 
@@ -273,7 +273,7 @@ class UIUtils:
         if isDarkTheme() and color == "#0078D4":
             color = themeColor().name() # 使用主题色
             
-        label = BodyLabel("STEP {} OF {}".format(step_number, total_steps))
+        label = BodyLabel(QCoreApplication.translate("UIUtils", "STEP {} OF {}").format(step_number, total_steps))
         # 增加主题监听可能需要将此 Label 也封装，但通常步骤条不那么敏感，这里保持静态或根据需求封装
         # 为了简单，这里只在创建时判断。如果需要动态切换，需要类似的 ThemeAwareLabel 封装。
         # 鉴于步骤条通常在刷新页面时重建，这里问题不大。

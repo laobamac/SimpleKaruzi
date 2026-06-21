@@ -185,28 +185,32 @@ class CustomMessageDialog(MessageBoxBase):
         self.viewLayout.addWidget(scroll)
         return checkboxes
 
-    def configure_buttons(self, yes_text: str = "确定", no_text: str = "取消", show_cancel: bool = True):
-        self.yesButton.setText(yes_text)
-        self.cancelButton.setText(no_text)
+    def configure_buttons(self, yes_text: str = None, no_text: str = None, show_cancel: bool = True):
+        self.yesButton.setText(yes_text if yes_text else QCoreApplication.translate("CustomDialogs", "确定"))
+        self.cancelButton.setText(no_text if no_text else QCoreApplication.translate("CustomDialogs", "取消"))
         self.cancelButton.setVisible(show_cancel)
 
 @ensure_main_thread
 def show_info(title: str, content: str) -> None:
     dialog = CustomMessageDialog(title, content)
-    dialog.configure_buttons(yes_text="确定", show_cancel=False)
+    dialog.configure_buttons(yes_text=QCoreApplication.translate("CustomDialogs", "确定"), show_cancel=False)
     dialog.exec()
 
 @ensure_main_thread
-def show_confirmation(title: str, content: str, yes_text="是", no_text="否") -> bool:
+def show_confirmation(title: str, content: str, yes_text=None, no_text=None) -> bool:
     dialog = CustomMessageDialog(title, content)
-    dialog.configure_buttons(yes_text=yes_text, no_text=no_text, show_cancel=True)
+    dialog.configure_buttons(
+        yes_text=yes_text if yes_text else QCoreApplication.translate("CustomDialogs", "是"),
+        no_text=no_text if no_text else QCoreApplication.translate("CustomDialogs", "否"),
+        show_cancel=True
+    )
     return dialog.exec()
 
 @ensure_main_thread
 def show_options_dialog(title, content, options, default_index=0):
     dialog = CustomMessageDialog(title, content)
     dialog.add_radio_options(options, default_index)
-    dialog.configure_buttons(yes_text="确定", show_cancel=True)
+    dialog.configure_buttons(yes_text=QCoreApplication.translate("CustomDialogs", "确定"), show_cancel=True)
     
     if dialog.exec():
         return dialog.button_group.checkedId()
@@ -216,7 +220,7 @@ def show_options_dialog(title, content, options, default_index=0):
 def show_checklist_dialog(title, content, items, checked_indices=None):
     dialog = CustomMessageDialog(title, content)
     checkboxes = dialog.add_checklist(items, checked_indices)
-    dialog.configure_buttons(yes_text="确定", show_cancel=True)
+    dialog.configure_buttons(yes_text=QCoreApplication.translate("CustomDialogs", "确定"), show_cancel=True)
     
     if dialog.exec():
         return [i for i, cb in enumerate(checkboxes) if cb.isChecked()]
@@ -224,7 +228,7 @@ def show_checklist_dialog(title, content, items, checked_indices=None):
 
 @ensure_main_thread
 def ask_network_count(total_networks):
-    content = (
+    content = QCoreApplication.translate("CustomDialogs",
         "在此设备上发现了 {} 个 WiFi 网络。<br><br>"
         "您想处理多少个网络？<br>"
         "<ul>"
@@ -233,11 +237,14 @@ def ask_network_count(total_networks):
         "</ul>"
     ).format(total_networks, total_networks)
     
-    dialog = CustomMessageDialog("WiFi 网络检索", content)
-    dialog.input_field = dialog.add_input(placeholder="1-{} (默认: 5)".format(total_networks), default_value="5")
+    dialog = CustomMessageDialog(QCoreApplication.translate("CustomDialogs", "WiFi 网络检索"), content)
+    dialog.input_field = dialog.add_input(
+        placeholder=QCoreApplication.translate("CustomDialogs", "1-{} (默认: 5)").format(total_networks), 
+        default_value="5"
+    )
     
     button_layout = QHBoxLayout()
-    all_btn = PushButton("处理所有网络", dialog.widget)
+    all_btn = PushButton(QCoreApplication.translate("CustomDialogs", "处理所有网络"), dialog.widget)
     button_layout.addWidget(all_btn)
     button_layout.addStretch()
     dialog.viewLayout.addLayout(button_layout)
@@ -285,8 +292,8 @@ def show_smbios_selection_dialog(title, content, items, current_selection, defau
     top_layout = QHBoxLayout(top_container)
     top_layout.setContentsMargins(0, 0, 0, 0)
     
-    show_all_cb = QCheckBox("显示所有型号")
-    restore_btn = PushButton("恢复默认 ({})".format(default_selection))
+    show_all_cb = QCheckBox(QCoreApplication.translate("CustomDialogs", "显示所有型号"))
+    restore_btn = PushButton(QCoreApplication.translate("CustomDialogs", "恢复默认 ({})").format(default_selection))
     
     top_layout.addWidget(show_all_cb)
     top_layout.addStretch()
@@ -312,7 +319,7 @@ def show_smbios_selection_dialog(title, content, items, current_selection, defau
         category_label = None
         if category != current_category:
             current_category = category
-            category_label = QLabel("类别: {}".format(category))
+            category_label = QLabel(QCoreApplication.translate("CustomDialogs", "类别: {}").format(category))
             category_label.setStyleSheet("font-weight: bold; color: #0078D4; margin-top: 10px; border-bottom: 1px solid #E1DFDD;")
             layout.addWidget(category_label)
             
@@ -374,7 +381,7 @@ def show_smbios_selection_dialog(title, content, items, current_selection, defau
     
     update_visibility()
     
-    dialog.configure_buttons(yes_text="确定", show_cancel=True)
+    dialog.configure_buttons(yes_text=QCoreApplication.translate("CustomDialogs", "确定"), show_cancel=True)
     
     if dialog.exec():
         selected_id = button_group.checkedId()
@@ -388,9 +395,9 @@ def show_macos_version_dialog(native_macos_version, ocl_patched_macos_version, s
     
     if native_macos_version[1][:2] != suggested_macos_version[:2]:
         suggested_macos_name = os_data.get_macos_name_by_darwin(suggested_macos_version)
-        content += "<b style=\"color: #1565C0\">建议的 macOS 版本：</b> 为了更好的兼容性和稳定性，建议您仅使用 <b>{}</b> 或更旧版本。<br><br>".format(suggested_macos_name)
+        content += QCoreApplication.translate("CustomDialogs", "<b style=\"color: #1565C0\">建议的 macOS 版本：</b> 为了更好的兼容性和稳定性，建议您仅使用 <b>{}</b> 或更旧版本。<br><br>").format(suggested_macos_name)
 
-    content += "请选择您想要使用的 macOS 版本："
+    content += QCoreApplication.translate("CustomDialogs", "请选择您想要使用的 macOS 版本：")
     
     options = []
     version_values = []
@@ -411,7 +418,7 @@ def show_macos_version_dialog(native_macos_version, ocl_patched_macos_version, s
         
         label = ""
         if oclp_min <= darwin_version <= oclp_max:
-            label = " <i style=\"color: #FF8C00\">(需要 OCLP 补丁)</i>"
+            label = QCoreApplication.translate("CustomDialogs", " <i style=\"color: #FF8C00\">(需要 OCLP 补丁)</i>")
         
         options.append("<span>{}{}</span>".format(name, label))
         version_values.append(darwin_version)
@@ -419,7 +426,7 @@ def show_macos_version_dialog(native_macos_version, ocl_patched_macos_version, s
         if darwin_version == int(suggested_macos_version[:2]):
             default_index = len(options) - 1
     
-    result = show_options_dialog("选择 macOS 版本", content, options, default_index)
+    result = show_options_dialog(QCoreApplication.translate("CustomDialogs", "选择 macOS 版本"), content, options, default_index)
     
     if result is not None:
         return "{}.99.99".format(version_values[result])
@@ -429,11 +436,11 @@ def show_macos_version_dialog(native_macos_version, ocl_patched_macos_version, s
 class UpdateDialog(MessageBoxBase):
     progress_updated = pyqtSignal(int, str)
     
-    def __init__(self, title="更新", initial_status="正在检查更新..."):
+    def __init__(self, title=None, initial_status=None):
         super().__init__(_default_gui_handler)
         
-        self.titleLabel = SubtitleLabel(title, self.widget)
-        self.statusLabel = BodyLabel(initial_status, self.widget)
+        self.titleLabel = SubtitleLabel(title if title else QCoreApplication.translate("CustomDialogs", "更新"), self.widget)
+        self.statusLabel = BodyLabel(initial_status if initial_status else QCoreApplication.translate("CustomDialogs", "正在检查更新..."), self.widget)
         self.statusLabel.setWordWrap(True)
         
         self.progressBar = ProgressBar(self.widget)
@@ -468,11 +475,11 @@ class UpdateDialog(MessageBoxBase):
         self.yesButton.setVisible(show_ok)
         self.cancelButton.setVisible(show_cancel)
     
-    def configure_buttons(self, ok_text="确定", cancel_text="取消"):
-        self.yesButton.setText(ok_text)
-        self.cancelButton.setText(cancel_text)
+    def configure_buttons(self, ok_text=None, cancel_text=None):
+        self.yesButton.setText(ok_text if ok_text else QCoreApplication.translate("CustomDialogs", "确定"))
+        self.cancelButton.setText(cancel_text if cancel_text else QCoreApplication.translate("CustomDialogs", "取消"))
 
-def show_update_dialog(title="更新", initial_status="正在检查更新..."):
+def show_update_dialog(title=None, initial_status=None):
     dialog = UpdateDialog(title, initial_status)
     return dialog
 
@@ -480,11 +487,11 @@ class DownloadProgressDialog(MessageBoxBase):
     """用于 SKSP 下载的进度对话框，支持取消"""
     progress_updated = pyqtSignal(int, str)
     
-    def __init__(self, title="下载中", initial_status="正在连接..."):
+    def __init__(self, title=None, initial_status=None):
         super().__init__(_default_gui_handler)
         
-        self.titleLabel = SubtitleLabel(title, self.widget)
-        self.statusLabel = BodyLabel(initial_status, self.widget)
+        self.titleLabel = SubtitleLabel(title if title else QCoreApplication.translate("CustomDialogs", "下载中"), self.widget)
+        self.statusLabel = BodyLabel(initial_status if initial_status else QCoreApplication.translate("CustomDialogs", "正在连接..."), self.widget)
         self.statusLabel.setWordWrap(True)
         
         self.progressBar = ProgressBar(self.widget)
@@ -499,7 +506,7 @@ class DownloadProgressDialog(MessageBoxBase):
         
         # 下载对话框只显示取消按钮
         self.yesButton.setVisible(False)
-        self.cancelButton.setText("取消")
+        self.cancelButton.setText(QCoreApplication.translate("CustomDialogs", "取消"))
         
         self.progress_updated.connect(self._update_progress_safe)
         self._is_canceled = False
@@ -520,14 +527,14 @@ class DownloadProgressDialog(MessageBoxBase):
     
     def cancel_download(self):
         self._is_canceled = True
-        self.statusLabel.setText("正在取消...")
+        self.statusLabel.setText(QCoreApplication.translate("CustomDialogs", "正在取消..."))
         self.reject()
 
     def is_canceled(self):
         return self._is_canceled
 
 @ensure_main_thread
-def show_download_dialog(title="下载中", initial_status="正在连接..."):
+def show_download_dialog(title=None, initial_status=None):
     dialog = DownloadProgressDialog(title, initial_status)
     dialog.show()
     return dialog

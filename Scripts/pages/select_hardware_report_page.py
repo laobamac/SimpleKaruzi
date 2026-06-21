@@ -19,8 +19,8 @@ class ReportDetailsGroup(ExpandGroupSettingCard):
     def __init__(self, parent=None):
         super().__init__(
             FluentIcon.INFO,
-            "硬件报告详情",
-            "查看选定的报告路径和验证状态",
+            self.tr("硬件报告详情"),
+            self.tr("查看选定的报告路径和验证状态"),
             parent
         )
         
@@ -37,15 +37,15 @@ class ReportDetailsGroup(ExpandGroupSettingCard):
 
         self.reportCard = self.addGroup(
             FluentIcon.DOCUMENT,
-            "报告路径",
-            "未选择",
+            self.tr("报告路径"),
+            self.tr("未选择"),
             self.reportIcon
         )
         
         self.acpiCard = self.addGroup(
             FluentIcon.FOLDER,
-            "ACPI 目录",
-            "未选择",
+            self.tr("ACPI 目录"),
+            self.tr("未选择"),
             self.acpiIcon
         )
         
@@ -58,11 +58,14 @@ class ReportDetailsGroup(ExpandGroupSettingCard):
         card = self.reportCard if section == "report" else self.acpiCard
         icon_widget = self.reportIcon if section == "report" else self.acpiIcon
         
-        if path and path != "未选择" and path != "未选择":
-            path = os.path.normpath(path)
+        display_path = path
+        if path == "未选择":
+            display_path = self.tr("未选择")
+        elif path:
+            display_path = os.path.normpath(path)
         
-        card.setContent(path)
-        card.setToolTip(message if message else path)
+        card.setContent(display_path)
+        card.setToolTip(message if message else display_path)
 
         icon = FluentIcon.INFO
         # 默认次要文本颜色
@@ -114,8 +117,8 @@ class SelectHardwareReportPage(QWidget):
         
         header_layout = QVBoxLayout()
         header_layout.setSpacing(SPACING["small"])
-        title = SubtitleLabel("选择硬件报告")
-        subtitle = BodyLabel("选择你要为其构建 EFI 的目标系统的硬件报告")
+        title = SubtitleLabel(self.tr("选择硬件报告"))
+        subtitle = BodyLabel(self.tr("选择你要为其构建 EFI 的目标系统的硬件报告"))
         
         # 适配暗夜模式颜色
         subtitle_color = "#d2d2d2" if isDarkTheme() else COLORS["text_secondary"]
@@ -141,10 +144,10 @@ class SelectHardwareReportPage(QWidget):
     def create_instructions_card(self):
         card = self.ui_utils.custom_card(
             card_type="note",
-            title="快速指南",
+            title=self.tr("快速指南"),
             body=(
-                "<b>Windows 用户：</b>点击 <span style=\"color:#0078D4; font-weight:600;\">导出硬件报告</span> 按钮为当前系统生成硬件报告。或者，您可以使用 Hardware Sniffer 工具手动生成报告。<br>"
-                "<b>Linux/macOS 用户：</b>请传输在 Windows 上生成的报告。不支持本机生成。"
+                self.tr("<b>Windows 用户：</b>点击 <span style=\"color:#0078D4; font-weight:600;\">导出硬件报告</span> 按钮为当前系统生成硬件报告。或者，您可以使用 Hardware Sniffer 工具手动生成报告。<br>") +
+                self.tr("<b>Linux/macOS 用户：</b>请传输在 Windows 上生成的报告。不支持本机生成。")
             )
         )
         self.main_layout.addWidget(card)
@@ -155,18 +158,18 @@ class SelectHardwareReportPage(QWidget):
         layout.setContentsMargins(SPACING["large"], SPACING["large"], SPACING["large"], SPACING["large"])
         layout.setSpacing(SPACING["medium"])
 
-        title = StrongBodyLabel("选择方式")
+        title = StrongBodyLabel(self.tr("选择方式"))
         layout.addWidget(title)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(SPACING["medium"])
 
-        self.select_btn = PrimaryPushButton(FluentIcon.FOLDER_ADD, "选择硬件报告")
+        self.select_btn = PrimaryPushButton(FluentIcon.FOLDER_ADD, self.tr("选择硬件报告"))
         self.select_btn.clicked.connect(self.select_hardware_report)
         btn_layout.addWidget(self.select_btn)
 
         if os.name == "nt":
-            self.export_btn = PushButton(FluentIcon.DOWNLOAD, "导出硬件报告")
+            self.export_btn = PushButton(FluentIcon.DOWNLOAD, self.tr("导出硬件报告"))
             self.export_btn.clicked.connect(self.export_hardware_report)
             btn_layout.addWidget(self.export_btn)
 
@@ -184,7 +187,7 @@ class SelectHardwareReportPage(QWidget):
         self.status_icon_label.setFixedSize(28, 28)
         status_row.addWidget(self.status_icon_label)
         
-        self.progress_label = StrongBodyLabel("就绪")
+        self.progress_label = StrongBodyLabel(self.tr("就绪"))
         
         # 适配暗夜模式颜色
         progress_label_color = "#d2d2d2" if isDarkTheme() else COLORS["text_secondary"]

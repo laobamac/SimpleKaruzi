@@ -11,6 +11,7 @@ class Settings:
             "build_output_directory": "",
             "include_beta_versions": False,
             "theme": "Auto",
+            "language": "Auto",
             "auto_update_check": True,
             "enable_debug_logging": False,
             "window_geometry": None,
