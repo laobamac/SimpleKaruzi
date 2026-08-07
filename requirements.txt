@@ -1,4 +1,3 @@
 certifi
-PyQt6
-pyqt6-sip
-PyQt6-Fluent-Widgets
+PyQt5>=5.15.0
+pyqt5-sip>=12.9.0

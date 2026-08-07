@@ -9,7 +9,11 @@ import shutil
 import random
 import platform
 import sys
-from qfluentwidgets import isDarkTheme
+
+try:
+    from qfluentwidgets import isDarkTheme
+except ImportError:
+    from qfluentwidgets_compat import isDarkTheme
 
 try:
     long
